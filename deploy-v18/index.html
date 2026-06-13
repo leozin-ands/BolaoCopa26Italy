@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Bolão Copa 2026 — Italy</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏆</text></svg>"/>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0d1b34;color:#fff;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
+input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none}
+input[type=number]{-moz-appearance:textfield}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:#0d1b34}
+::-webkit-scrollbar-thumb{background:#3a5490;border-radius:3px}
+select option{background:#0d1b34;color:#fff}
+.tab-btn{padding:11px 16px;background:none;border:none;color:#94a3b8;font-size:13px;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;font-family:inherit;transition:color .2s}
+.tab-btn.active{color:#facc15;border-bottom-color:#facc15;font-weight:700}
+.tab-btn:hover{color:#e2e8f0}
+.fbtn{padding:5px 12px;border-radius:20px;border:1px solid #243356;background:transparent;color:#94a3b8;font-size:12px;cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap}
+.fbtn.active{background:#facc15;color:#0d1b34;font-weight:700;border-color:#facc15}
+.fbtn:hover{border-color:#facc15;color:#facc15}
+.mrow{background:#1a2d52;border-radius:10px;padding:11px 14px;border:1px solid #243356;display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;transition:border .2s}
+.mrow.live{border:2px solid #22c55e !important}
+.mrow.done{border-color:#2d4a7a}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(max-width:700px){
+  .hdr-top{flex-direction:column !important;}
+  .hdr-center{max-width:100% !important;width:100% !important;}
+  .hdr-center>div{flex-direction:column !important;}
+  .hdr-live,.hdr-next{max-width:100% !important;flex:1 1 100% !important;min-width:0 !important;}
+  .hdr-right{width:100% !important;min-width:0 !important;}
+  .hdr-left{width:100% !important;}
+}
+</style>
+</head>
+<body>
+<div id="root"><div style="display:flex;align-items:center;justify-content:center;height:100vh;gap:12px;color:#94a3b8">
+  <div style="width:20px;height:20px;border:2px solid #3a5490;border-top-color:#facc15;border-radius:50%;animation:spin .8s linear infinite"></div>
+  Carregando bolão...
+</div></div>
+
+<script>
+var FIREBASE_CONFIG={
+  apiKey:"AIzaSyBLV76xcRIQExkpM9vHHUsCgffi1GFaO0s",
+  authDomain:"bolao-italy-2026-52cb4.firebaseapp.com",
+  databaseURL:"https://bolao-italy-2026-52cb4-default-rtdb.firebaseio.com",
+  projectId:"bolao-italy-2026-52cb4",
+  storageBucket:"bolao-italy-2026-52cb4.firebasestorage.app",
+  messagingSenderId:"838282891139",
+  appId:"1:838282891139:web:764ec361d76d204a8ab0b6"
+};
+var _db=null;
+try{
+  var _app=firebase.apps.length?firebase.app():firebase.initializeApp(FIREBASE_CONFIG);
+  _db=firebase.database(_app);
+}catch(e){console.error('Firebase:',e);}
+</script>
+
+<script>
+const RAW = [{"name": "Victor Dardengo (Vitão)", "matches": [{"grupo": "A", "team_a": "México", "score_a": 2, "score_b": 1, "team_b": "África do Sul"}, {"grupo": "A", "team_a": "México", "score_a": 2, "score_b": 0, "team_b": "Coreia do Sul"}, {"grupo": "A", "team_a": "México", "score_a": 3, "score_b": 1, "team_b": "República Tcheca"}, {"grupo": "A", "team_a": "África do Sul", "score_a": 1, "score_b": 1, "team_b": "Coreia do Sul"}, {"grupo": "A", "team_a": "África do Sul", "score_a": 1, "score_b": 2, "team_b": "República Tcheca"}, {"grupo": "A", "team_a": "Coreia do Sul", "score_a": 0, "score_b": 1, "team_b": "República Tcheca"}, {"grupo": "B", "team_a": "Canadá", "score_a": 1, "score_b": 0, "team_b": "Bósnia e Herzegovina"}, {"grupo": "B", "team_a": "Canadá", "score_a": 2, "score_b": 0, "team_b": "Catar"}, {"grupo": "B", "team_a": "Canadá", "score_a": 1, "score_b": 0, "team_b": "Suíça"}, {"grupo": "B", "team_a": "Bósnia e Herzegovina", "score_a": 1, "score_b": 1, "team_b": "Catar"}, {"grupo": "B", "team_a": "Bósnia e Herzegovina", "score_a": 2, "score_b": 1, "team_b": "Suíça"}, {"grupo": "B", "team_a": "Catar", "score_a": 0, "score_b": 2, "team_b": "Suíça"}, {"grupo": "C", "team_a": "Brasil", "score_a": 2, "score_b": 0, "team_b": "Marrocos"}, {"grupo": "C", "team_a": "Brasil", "score_a": 4, "score_b": 0, "team_b": "Haiti"}, {"grupo": "C", "team_a": "Brasil", "score_a": 2, "score_b": 0, "team_b": "Escócia"}, {"grupo": "C", "team_a": "Marrocos", "score_a": 1, "score_b": 0, "team_b": "Haiti"}, {"grupo": "C", "team_a": "Marrocos", "score_a": 2, "score_b": 0, "team_b": "Escócia"}, {"grupo": "C", "team_a": "Haiti", "score_a": 2, "score_b": 1, "team_b": "Escócia"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 0, "score_b": 1, "team_b": "Paraguai"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 3, "score_b": 1, "team_b": "Austrália"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 2, "score_b": 1, "team_b": "Turquia"}, {"grupo": "D", "team_a": "Paraguai", "score_a": 1, "score_b": 2, "team_b": "Austrália"}, {"grupo": "D", "team_a": "Paraguai", "score_a": 2, "score_b": 1, "team_b": "Turquia"}, {"grupo": "D", "team_a": "Austrália", "score_a": 1, "score_b": 2, "team_b": "Turquia"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 3, "score_b": 0, "team_b": "Curaçao"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 2, "score_b": 1, "team_b": "Costa do Marfim"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 1, "score_b": 1, "team_b": "Equador"}, {"grupo": "E", "team_a": "Curaçao", "score_a": 2, "score_b": 1, "team_b": "Costa do Marfim"}, {"grupo": "E", "team_a": "Curaçao", "score_a": 0, "score_b": 3, "team_b": "Equador"}, {"grupo": "E", "team_a": "Costa do Marfim", "score_a": 1, "score_b": 3, "team_b": "Equador"}, {"grupo": "F", "team_a": "Holanda", "score_a": 2, "score_b": 1, "team_b": "Japão"}, {"grupo": "F", "team_a": "Holanda", "score_a": 3, "score_b": 0, "team_b": "Suécia"}, {"grupo": "F", "team_a": "Holanda", "score_a": 2, "score_b": 0, "team_b": "Tunísia"}, {"grupo": "F", "team_a": "Japão", "score_a": 2, "score_b": 1, "team_b": "Suécia"}, {"grupo": "F", "team_a": "Japão", "score_a": 2, "score_b": 0, "team_b": "Tunísia"}, {"grupo": "F", "team_a": "Suécia", "score_a": 1, "score_b": 0, "team_b": "Tunísia"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 2, "score_b": 0, "team_b": "Egito"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 3, "score_b": 0, "team_b": "Irã"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 3, "score_b": 1, "team_b": "Nova Zelândia"}, {"grupo": "G", "team_a": "Egito", "score_a": 1, "score_b": 1, "team_b": "Irã"}, {"grupo": "G", "team_a": "Egito", "score_a": 2, "score_b": 0, "team_b": "Nova Zelândia"}, {"grupo": "G", "team_a": "Irã", "score_a": 2, "score_b": 0, "team_b": "Nova Zelândia"}, {"grupo": "H", "team_a": "Espanha", "score_a": 2, "score_b": 0, "team_b": "Cabo Verde"}, {"grupo": "H", "team_a": "Espanha", "score_a": 3, "score_b": 0, "team_b": "Arábia Saudita"}, {"grupo": "H", "team_a": "Espanha", "score_a": 2, "score_b": 1, "team_b": "Uruguai"}, {"grupo": "H", "team_a": "Cabo Verde", "score_a": 0, "score_b": 3, "team_b": "Arábia Saudita"}, {"grupo": "H", "team_a": "Cabo Verde", "score_a": 0, "score_b": 2, "team_b": "Uruguai"}, {"grupo": "H", "team_a": "Arábia Saudita", "score_a": 0, "score_b": 1, "team_b": "Uruguai"}, {"grupo": "I", "team_a": "França", "score_a": 3, "score_b": 0, "team_b": "Senegal"}, {"grupo": "I", "team_a": "França", "score_a": 3, "score_b": 0, "team_b": "Iraque"}, {"grupo": "I", "team_a": "França", "score_a": 3, "score_b": 0, "team_b": "Noruega"}, {"grupo": "I", "team_a": "Senegal", "score_a": 1, "score_b": 0, "team_b": "Iraque"}, {"grupo": "I", "team_a": "Senegal", "score_a": 1, "score_b": 1, "team_b": "Noruega"}, {"grupo": "I", "team_a": "Iraque", "score_a": 0, "score_b": 2, "team_b": "Noruega"}, {"grupo": "J", "team_a": "Argentina", "score_a": 3, "score_b": 0, "team_b": "Argélia"}, {"grupo": "J", "team_a": "Argentina", "score_a": 2, "score_b": 0, "team_b": "Áustria"}, {"grupo": "J", "team_a": "Argentina", "score_a": 3, "score_b": 1, "team_b": "Jordânia"}, {"grupo": "J", "team_a": "Argélia", "score_a": 2, "score_b": 0, "team_b": "Áustria"}, {"grupo": "J", "team_a": "Argélia", "score_a": 1, "score_b": 0, "team_b": "Jordânia"}, {"grupo": "J", "team_a": "Áustria", "score_a": 2, "score_b": 0, "team_b": "Jordânia"}, {"grupo": "K", "team_a": "Portugal", "score_a": 3, "score_b": 0, "team_b": "Rep. D. Congo"}, {"grupo": "K", "team_a": "Portugal", "score_a": 3, "score_b": 1, "team_b": "Uzbequistão"}, {"grupo": "K", "team_a": "Portugal", "score_a": 2, "score_b": 1, "team_b": "Colômbia"}, {"grupo": "K", "team_a": "Rep. D. Congo", "score_a": 1, "score_b": 1, "team_b": "Uzbequistão"}, {"grupo": "K", "team_a": "Rep. D. Congo", "score_a": 0, "score_b": 2, "team_b": "Colômbia"}, {"grupo": "K", "team_a": "Uzbequistão", "score_a": 0, "score_b": 2, "team_b": "Colômbia"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 2, "score_b": 1, "team_b": "Croácia"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 3, "score_b": 0, "team_b": "Gana"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 2, "score_b": 0, "team_b": "Panamá"}, {"grupo": "L", "team_a": "Croácia", "score_a": 1, "score_b": 1, "team_b": "Gana"}, {"grupo": "L", "team_a": "Croácia", "score_a": 1, "score_b": 1, "team_b": "Panamá"}, {"grupo": "L", "team_a": "Gana", "score_a": 1, "score_b": 1, "team_b": "Panamá"}]}, {"name": "Léo Lucki", "matches": [{"grupo": "A", "team_a": "México", "score_a": 2, "score_b": 0, "team_b": "África do Sul"}, {"grupo": "A", "team_a": "México", "score_a": 2, "score_b": 1, "team_b": "Coreia do Sul"}, {"grupo": "A", "team_a": "México", "score_a": 2, "score_b": 1, "team_b": "República Tcheca"}, {"grupo": "A", "team_a": "África do Sul", "score_a": 0, "score_b": 2, "team_b": "Coreia do Sul"}, {"grupo": "A", "team_a": "África do Sul", "score_a": 1, "score_b": 3, "team_b": "República Tcheca"}, {"grupo": "A", "team_a": "Coreia do Sul", "score_a": 2, "score_b": 1, "team_b": "República Tcheca"}, {"grupo": "B", "team_a": "Canadá", "score_a": 2, "score_b": 1, "team_b": "Bósnia e Herzegovina"}, {"grupo": "B", "team_a": "Canadá", "score_a": 2, "score_b": 1, "team_b": "Catar"}, {"grupo": "B", "team_a": "Canadá", "score_a": 1, "score_b": 1, "team_b": "Suíça"}, {"grupo": "B", "team_a": "Bósnia e Herzegovina", "score_a": 1, "score_b": 0, "team_b": "Catar"}, {"grupo": "B", "team_a": "Bósnia e Herzegovina", "score_a": 0, "score_b": 2, "team_b": "Suíça"}, {"grupo": "B", "team_a": "Catar", "score_a": 1, "score_b": 3, "team_b": "Suíça"}, {"grupo": "C", "team_a": "Brasil", "score_a": 2, "score_b": 1, "team_b": "Marrocos"}, {"grupo": "C", "team_a": "Brasil", "score_a": 4, "score_b": 1, "team_b": "Haiti"}, {"grupo": "C", "team_a": "Brasil", "score_a": 3, "score_b": 1, "team_b": "Escócia"}, {"grupo": "C", "team_a": "Marrocos", "score_a": 3, "score_b": 0, "team_b": "Haiti"}, {"grupo": "C", "team_a": "Marrocos", "score_a": 2, "score_b": 0, "team_b": "Escócia"}, {"grupo": "C", "team_a": "Haiti", "score_a": 1, "score_b": 3, "team_b": "Escócia"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 2, "score_b": 0, "team_b": "Paraguai"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 2, "score_b": 1, "team_b": "Austrália"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 2, "score_b": 2, "team_b": "Turquia"}, {"grupo": "D", "team_a": "Paraguai", "score_a": 1, "score_b": 0, "team_b": "Austrália"}, {"grupo": "D", "team_a": "Paraguai", "score_a": 1, "score_b": 2, "team_b": "Turquia"}, {"grupo": "D", "team_a": "Austrália", "score_a": 1, "score_b": 2, "team_b": "Turquia"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 5, "score_b": 0, "team_b": "Curaçao"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 3, "score_b": 1, "team_b": "Costa do Marfim"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 2, "score_b": 1, "team_b": "Equador"}, {"grupo": "E", "team_a": "Curaçao", "score_a": 0, "score_b": 3, "team_b": "Costa do Marfim"}, {"grupo": "E", "team_a": "Curaçao", "score_a": 0, "score_b": 2, "team_b": "Equador"}, {"grupo": "E", "team_a": "Costa do Marfim", "score_a": 2, "score_b": 2, "team_b": "Equador"}, {"grupo": "F", "team_a": "Holanda", "score_a": 2, "score_b": 2, "team_b": "Japão"}, {"grupo": "F", "team_a": "Holanda", "score_a": 2, "score_b": 0, "team_b": "Suécia"}, {"grupo": "F", "team_a": "Holanda", "score_a": 3, "score_b": 0, "team_b": "Tunísia"}, {"grupo": "F", "team_a": "Japão", "score_a": 2, "score_b": 1, "team_b": "Suécia"}, {"grupo": "F", "team_a": "Japão", "score_a": 3, "score_b": 1, "team_b": "Tunísia"}, {"grupo": "F", "team_a": "Suécia", "score_a": 2, "score_b": 0, "team_b": "Tunísia"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 2, "score_b": 1, "team_b": "Egito"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 2, "score_b": 0, "team_b": "Irã"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 3, "score_b": 0, "team_b": "Nova Zelândia"}, {"grupo": "G", "team_a": "Egito", "score_a": 2, "score_b": 0, "team_b": "Irã"}, {"grupo": "G", "team_a": "Egito", "score_a": 3, "score_b": 1, "team_b": "Nova Zelândia"}, {"grupo": "G", "team_a": "Irã", "score_a": 2, "score_b": 0, "team_b": "Nova Zelândia"}, {"grupo": "H", "team_a": "Espanha", "score_a": 4, "score_b": 0, "team_b": "Cabo Verde"}, {"grupo": "H", "team_a": "Espanha", "score_a": 3, "score_b": 0, "team_b": "Arábia Saudita"}, {"grupo": "H", "team_a": "Espanha", "score_a": 3, "score_b": 1, "team_b": "Uruguai"}, {"grupo": "H", "team_a": "Cabo Verde", "score_a": 1, "score_b": 2, "team_b": "Arábia Saudita"}, {"grupo": "H", "team_a": "Cabo Verde", "score_a": 1, "score_b": 3, "team_b": "Uruguai"}, {"grupo": "H", "team_a": "Arábia Saudita", "score_a": 0, "score_b": 2, "team_b": "Uruguai"}, {"grupo": "I", "team_a": "França", "score_a": 3, "score_b": 1, "team_b": "Senegal"}, {"grupo": "I", "team_a": "França", "score_a": 3, "score_b": 0, "team_b": "Iraque"}, {"grupo": "I", "team_a": "França", "score_a": 2, "score_b": 1, "team_b": "Noruega"}, {"grupo": "I", "team_a": "Senegal", "score_a": 2, "score_b": 1, "team_b": "Iraque"}, {"grupo": "I", "team_a": "Senegal", "score_a": 1, "score_b": 1, "team_b": "Noruega"}, {"grupo": "I", "team_a": "Iraque", "score_a": 0, "score_b": 2, "team_b": "Noruega"}, {"grupo": "J", "team_a": "Argentina", "score_a": 3, "score_b": 1, "team_b": "Argélia"}, {"grupo": "J", "team_a": "Argentina", "score_a": 2, "score_b": 0, "team_b": "Áustria"}, {"grupo": "J", "team_a": "Argentina", "score_a": 3, "score_b": 0, "team_b": "Jordânia"}, {"grupo": "J", "team_a": "Argélia", "score_a": 1, "score_b": 2, "team_b": "Áustria"}, {"grupo": "J", "team_a": "Argélia", "score_a": 2, "score_b": 1, "team_b": "Jordânia"}, {"grupo": "J", "team_a": "Áustria", "score_a": 2, "score_b": 0, "team_b": "Jordânia"}, {"grupo": "K", "team_a": "Portugal", "score_a": 3, "score_b": 0, "team_b": "Rep. D. Congo"}, {"grupo": "K", "team_a": "Portugal", "score_a": 4, "score_b": 0, "team_b": "Uzbequistão"}, {"grupo": "K", "team_a": "Portugal", "score_a": 2, "score_b": 1, "team_b": "Colômbia"}, {"grupo": "K", "team_a": "Rep. D. Congo", "score_a": 1, "score_b": 1, "team_b": "Uzbequistão"}, {"grupo": "K", "team_a": "Rep. D. Congo", "score_a": 0, "score_b": 2, "team_b": "Colômbia"}, {"grupo": "K", "team_a": "Uzbequistão", "score_a": 1, "score_b": 3, "team_b": "Colômbia"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 2, "score_b": 1, "team_b": "Croácia"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 3, "score_b": 0, "team_b": "Gana"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 4, "score_b": 1, "team_b": "Panamá"}, {"grupo": "L", "team_a": "Croácia", "score_a": 2, "score_b": 0, "team_b": "Gana"}, {"grupo": "L", "team_a": "Croácia", "score_a": 3, "score_b": 1, "team_b": "Panamá"}, {"grupo": "L", "team_a": "Gana", "score_a": 2, "score_b": 2, "team_b": "Panamá"}]}, {"name": "Ands", "matches": [{"grupo": "A", "team_a": "México", "score_a": 3, "score_b": 0, "team_b": "África do Sul"}, {"grupo": "A", "team_a": "México", "score_a": 2, "score_b": 2, "team_b": "Coreia do Sul"}, {"grupo": "A", "team_a": "México", "score_a": 2, "score_b": 1, "team_b": "República Tcheca"}, {"grupo": "A", "team_a": "África do Sul", "score_a": 0, "score_b": 2, "team_b": "Coreia do Sul"}, {"grupo": "A", "team_a": "África do Sul", "score_a": 1, "score_b": 2, "team_b": "República Tcheca"}, {"grupo": "A", "team_a": "Coreia do Sul", "score_a": 2, "score_b": 0, "team_b": "República Tcheca"}, {"grupo": "B", "team_a": "Canadá", "score_a": 2, "score_b": 1, "team_b": "Bósnia e Herzegovina"}, {"grupo": "B", "team_a": "Canadá", "score_a": 2, "score_b": 0, "team_b": "Catar"}, {"grupo": "B", "team_a": "Canadá", "score_a": 1, "score_b": 3, "team_b": "Suíça"}, {"grupo": "B", "team_a": "Bósnia e Herzegovina", "score_a": 2, "score_b": 0, "team_b": "Catar"}, {"grupo": "B", "team_a": "Bósnia e Herzegovina", "score_a": 0, "score_b": 2, "team_b": "Suíça"}, {"grupo": "B", "team_a": "Catar", "score_a": 0, "score_b": 3, "team_b": "Suíça"}, {"grupo": "C", "team_a": "Brasil", "score_a": 2, "score_b": 1, "team_b": "Marrocos"}, {"grupo": "C", "team_a": "Brasil", "score_a": 5, "score_b": 0, "team_b": "Haiti"}, {"grupo": "C", "team_a": "Brasil", "score_a": 3, "score_b": 1, "team_b": "Escócia"}, {"grupo": "C", "team_a": "Marrocos", "score_a": 3, "score_b": 0, "team_b": "Haiti"}, {"grupo": "C", "team_a": "Marrocos", "score_a": 2, "score_b": 0, "team_b": "Escócia"}, {"grupo": "C", "team_a": "Haiti", "score_a": 0, "score_b": 2, "team_b": "Escócia"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 2, "score_b": 2, "team_b": "Paraguai"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 1, "score_b": 0, "team_b": "Austrália"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 1, "score_b": 2, "team_b": "Turquia"}, {"grupo": "D", "team_a": "Paraguai", "score_a": 2, "score_b": 0, "team_b": "Austrália"}, {"grupo": "D", "team_a": "Paraguai", "score_a": 2, "score_b": 2, "team_b": "Turquia"}, {"grupo": "D", "team_a": "Austrália", "score_a": 1, "score_b": 3, "team_b": "Turquia"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 6, "score_b": 0, "team_b": "Curaçao"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 3, "score_b": 0, "team_b": "Costa do Marfim"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 4, "score_b": 1, "team_b": "Equador"}, {"grupo": "E", "team_a": "Curaçao", "score_a": 1, "score_b": 3, "team_b": "Costa do Marfim"}, {"grupo": "E", "team_a": "Curaçao", "score_a": 0, "score_b": 3, "team_b": "Equador"}, {"grupo": "E", "team_a": "Costa do Marfim", "score_a": 1, "score_b": 1, "team_b": "Equador"}, {"grupo": "F", "team_a": "Holanda", "score_a": 3, "score_b": 2, "team_b": "Japão"}, {"grupo": "F", "team_a": "Holanda", "score_a": 2, "score_b": 1, "team_b": "Suécia"}, {"grupo": "F", "team_a": "Holanda", "score_a": 4, "score_b": 0, "team_b": "Tunísia"}, {"grupo": "F", "team_a": "Japão", "score_a": 2, "score_b": 1, "team_b": "Suécia"}, {"grupo": "F", "team_a": "Japão", "score_a": 2, "score_b": 0, "team_b": "Tunísia"}, {"grupo": "F", "team_a": "Suécia", "score_a": 3, "score_b": 1, "team_b": "Tunísia"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 2, "score_b": 1, "team_b": "Egito"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 4, "score_b": 0, "team_b": "Irã"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 3, "score_b": 0, "team_b": "Nova Zelândia"}, {"grupo": "G", "team_a": "Egito", "score_a": 2, "score_b": 0, "team_b": "Irã"}, {"grupo": "G", "team_a": "Egito", "score_a": 2, "score_b": 0, "team_b": "Nova Zelândia"}, {"grupo": "G", "team_a": "Irã", "score_a": 2, "score_b": 2, "team_b": "Nova Zelândia"}, {"grupo": "H", "team_a": "Espanha", "score_a": 5, "score_b": 0, "team_b": "Cabo Verde"}, {"grupo": "H", "team_a": "Espanha", "score_a": 3, "score_b": 1, "team_b": "Arábia Saudita"}, {"grupo": "H", "team_a": "Espanha", "score_a": 2, "score_b": 1, "team_b": "Uruguai"}, {"grupo": "H", "team_a": "Cabo Verde", "score_a": 1, "score_b": 2, "team_b": "Arábia Saudita"}, {"grupo": "H", "team_a": "Cabo Verde", "score_a": 0, "score_b": 3, "team_b": "Uruguai"}, {"grupo": "H", "team_a": "Arábia Saudita", "score_a": 1, "score_b": 2, "team_b": "Uruguai"}, {"grupo": "I", "team_a": "França", "score_a": 3, "score_b": 1, "team_b": "Senegal"}, {"grupo": "I", "team_a": "França", "score_a": 6, "score_b": 0, "team_b": "Iraque"}, {"grupo": "I", "team_a": "França", "score_a": 2, "score_b": 1, "team_b": "Noruega"}, {"grupo": "I", "team_a": "Senegal", "score_a": 2, "score_b": 0, "team_b": "Iraque"}, {"grupo": "I", "team_a": "Senegal", "score_a": 1, "score_b": 2, "team_b": "Noruega"}, {"grupo": "I", "team_a": "Iraque", "score_a": 0, "score_b": 3, "team_b": "Noruega"}, {"grupo": "J", "team_a": "Argentina", "score_a": 3, "score_b": 0, "team_b": "Argélia"}, {"grupo": "J", "team_a": "Argentina", "score_a": 2, "score_b": 1, "team_b": "Áustria"}, {"grupo": "J", "team_a": "Argentina", "score_a": 4, "score_b": 0, "team_b": "Jordânia"}, {"grupo": "J", "team_a": "Argélia", "score_a": 1, "score_b": 2, "team_b": "Áustria"}, {"grupo": "J", "team_a": "Argélia", "score_a": 1, "score_b": 0, "team_b": "Jordânia"}, {"grupo": "J", "team_a": "Áustria", "score_a": 3, "score_b": 1, "team_b": "Jordânia"}, {"grupo": "K", "team_a": "Portugal", "score_a": 4, "score_b": 0, "team_b": "Rep. D. Congo"}, {"grupo": "K", "team_a": "Portugal", "score_a": 3, "score_b": 1, "team_b": "Uzbequistão"}, {"grupo": "K", "team_a": "Portugal", "score_a": 2, "score_b": 2, "team_b": "Colômbia"}, {"grupo": "K", "team_a": "Rep. D. Congo", "score_a": 0, "score_b": 2, "team_b": "Uzbequistão"}, {"grupo": "K", "team_a": "Rep. D. Congo", "score_a": 0, "score_b": 3, "team_b": "Colômbia"}, {"grupo": "K", "team_a": "Uzbequistão", "score_a": 1, "score_b": 3, "team_b": "Colômbia"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 3, "score_b": 1, "team_b": "Croácia"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 3, "score_b": 0, "team_b": "Gana"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 5, "score_b": 0, "team_b": "Panamá"}, {"grupo": "L", "team_a": "Croácia", "score_a": 2, "score_b": 0, "team_b": "Gana"}, {"grupo": "L", "team_a": "Croácia", "score_a": 3, "score_b": 0, "team_b": "Panamá"}, {"grupo": "L", "team_a": "Gana", "score_a": 2, "score_b": 0, "team_b": "Panamá"}]}, {"name": "Adriano (Leão)", "matches": [{"grupo": "A", "team_a": "México", "score_a": 3, "score_b": 2, "team_b": "África do Sul"}, {"grupo": "A", "team_a": "México", "score_a": 2, "score_b": 1, "team_b": "Coreia do Sul"}, {"grupo": "A", "team_a": "México", "score_a": 1, "score_b": 0, "team_b": "República Tcheca"}, {"grupo": "A", "team_a": "África do Sul", "score_a": 0, "score_b": 2, "team_b": "Coreia do Sul"}, {"grupo": "A", "team_a": "África do Sul", "score_a": 3, "score_b": 1, "team_b": "República Tcheca"}, {"grupo": "A", "team_a": "Coreia do Sul", "score_a": 2, "score_b": 0, "team_b": "República Tcheca"}, {"grupo": "B", "team_a": "Canadá", "score_a": 1, "score_b": 2, "team_b": "Bósnia e Herzegovina"}, {"grupo": "B", "team_a": "Canadá", "score_a": 0, "score_b": 1, "team_b": "Catar"}, {"grupo": "B", "team_a": "Canadá", "score_a": 3, "score_b": 0, "team_b": "Suíça"}, {"grupo": "B", "team_a": "Bósnia e Herzegovina", "score_a": 2, "score_b": 2, "team_b": "Catar"}, {"grupo": "B", "team_a": "Bósnia e Herzegovina", "score_a": 1, "score_b": 1, "team_b": "Suíça"}, {"grupo": "B", "team_a": "Catar", "score_a": 0, "score_b": 0, "team_b": "Suíça"}, {"grupo": "C", "team_a": "Brasil", "score_a": 3, "score_b": 1, "team_b": "Marrocos"}, {"grupo": "C", "team_a": "Brasil", "score_a": 2, "score_b": 0, "team_b": "Haiti"}, {"grupo": "C", "team_a": "Brasil", "score_a": 2, "score_b": 0, "team_b": "Escócia"}, {"grupo": "C", "team_a": "Marrocos", "score_a": 0, "score_b": 2, "team_b": "Haiti"}, {"grupo": "C", "team_a": "Marrocos", "score_a": 3, "score_b": 1, "team_b": "Escócia"}, {"grupo": "C", "team_a": "Haiti", "score_a": 2, "score_b": 0, "team_b": "Escócia"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 1, "score_b": 2, "team_b": "Paraguai"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 2, "score_b": 1, "team_b": "Austrália"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 3, "score_b": 0, "team_b": "Turquia"}, {"grupo": "D", "team_a": "Paraguai", "score_a": 2, "score_b": 2, "team_b": "Austrália"}, {"grupo": "D", "team_a": "Paraguai", "score_a": 1, "score_b": 1, "team_b": "Turquia"}, {"grupo": "D", "team_a": "Austrália", "score_a": 0, "score_b": 0, "team_b": "Turquia"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 3, "score_b": 0, "team_b": "Curaçao"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 2, "score_b": 1, "team_b": "Costa do Marfim"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 1, "score_b": 0, "team_b": "Equador"}, {"grupo": "E", "team_a": "Curaçao", "score_a": 0, "score_b": 2, "team_b": "Costa do Marfim"}, {"grupo": "E", "team_a": "Curaçao", "score_a": 3, "score_b": 1, "team_b": "Equador"}, {"grupo": "E", "team_a": "Costa do Marfim", "score_a": 2, "score_b": 0, "team_b": "Equador"}, {"grupo": "F", "team_a": "Holanda", "score_a": 1, "score_b": 2, "team_b": "Japão"}, {"grupo": "F", "team_a": "Holanda", "score_a": 2, "score_b": 1, "team_b": "Suécia"}, {"grupo": "F", "team_a": "Holanda", "score_a": 3, "score_b": 0, "team_b": "Tunísia"}, {"grupo": "F", "team_a": "Japão", "score_a": 2, "score_b": 2, "team_b": "Suécia"}, {"grupo": "F", "team_a": "Japão", "score_a": 1, "score_b": 1, "team_b": "Tunísia"}, {"grupo": "F", "team_a": "Suécia", "score_a": 0, "score_b": 0, "team_b": "Tunísia"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 2, "score_b": 1, "team_b": "Egito"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 3, "score_b": 0, "team_b": "Irã"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 3, "score_b": 2, "team_b": "Nova Zelândia"}, {"grupo": "G", "team_a": "Egito", "score_a": 1, "score_b": 1, "team_b": "Irã"}, {"grupo": "G", "team_a": "Egito", "score_a": 2, "score_b": 0, "team_b": "Nova Zelândia"}, {"grupo": "G", "team_a": "Irã", "score_a": 3, "score_b": 2, "team_b": "Nova Zelândia"}, {"grupo": "H", "team_a": "Espanha", "score_a": 2, "score_b": 1, "team_b": "Cabo Verde"}, {"grupo": "H", "team_a": "Espanha", "score_a": 1, "score_b": 0, "team_b": "Arábia Saudita"}, {"grupo": "H", "team_a": "Espanha", "score_a": 2, "score_b": 2, "team_b": "Uruguai"}, {"grupo": "H", "team_a": "Cabo Verde", "score_a": 3, "score_b": 1, "team_b": "Arábia Saudita"}, {"grupo": "H", "team_a": "Cabo Verde", "score_a": 0, "score_b": 0, "team_b": "Uruguai"}, {"grupo": "H", "team_a": "Arábia Saudita", "score_a": 1, "score_b": 2, "team_b": "Uruguai"}, {"grupo": "I", "team_a": "França", "score_a": 2, "score_b": 1, "team_b": "Senegal"}, {"grupo": "I", "team_a": "França", "score_a": 3, "score_b": 0, "team_b": "Iraque"}, {"grupo": "I", "team_a": "França", "score_a": 0, "score_b": 2, "team_b": "Noruega"}, {"grupo": "I", "team_a": "Senegal", "score_a": 1, "score_b": 1, "team_b": "Iraque"}, {"grupo": "I", "team_a": "Senegal", "score_a": 2, "score_b": 0, "team_b": "Noruega"}, {"grupo": "I", "team_a": "Iraque", "score_a": 3, "score_b": 2, "team_b": "Noruega"}, {"grupo": "J", "team_a": "Argentina", "score_a": 2, "score_b": 1, "team_b": "Argélia"}, {"grupo": "J", "team_a": "Argentina", "score_a": 1, "score_b": 0, "team_b": "Áustria"}, {"grupo": "J", "team_a": "Argentina", "score_a": 2, "score_b": 2, "team_b": "Jordânia"}, {"grupo": "J", "team_a": "Argélia", "score_a": 3, "score_b": 1, "team_b": "Áustria"}, {"grupo": "J", "team_a": "Argélia", "score_a": 0, "score_b": 0, "team_b": "Jordânia"}, {"grupo": "J", "team_a": "Áustria", "score_a": 1, "score_b": 2, "team_b": "Jordânia"}, {"grupo": "K", "team_a": "Portugal", "score_a": 2, "score_b": 1, "team_b": "Rep. D. Congo"}, {"grupo": "K", "team_a": "Portugal", "score_a": 3, "score_b": 0, "team_b": "Uzbequistão"}, {"grupo": "K", "team_a": "Portugal", "score_a": 1, "score_b": 0, "team_b": "Colômbia"}, {"grupo": "K", "team_a": "Rep. D. Congo", "score_a": 1, "score_b": 1, "team_b": "Uzbequistão"}, {"grupo": "K", "team_a": "Rep. D. Congo", "score_a": 1, "score_b": 3, "team_b": "Colômbia"}, {"grupo": "K", "team_a": "Uzbequistão", "score_a": 1, "score_b": 2, "team_b": "Colômbia"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 1, "score_b": 1, "team_b": "Croácia"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 1, "score_b": 0, "team_b": "Gana"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 2, "score_b": 0, "team_b": "Panamá"}, {"grupo": "L", "team_a": "Croácia", "score_a": 3, "score_b": 1, "team_b": "Gana"}, {"grupo": "L", "team_a": "Croácia", "score_a": 0, "score_b": 0, "team_b": "Panamá"}, {"grupo": "L", "team_a": "Gana", "score_a": 1, "score_b": 2, "team_b": "Panamá"}]}, {"name": "Rodrigo", "matches": [{"grupo": "A", "team_a": "México", "score_a": 3, "score_b": 0, "team_b": "África do Sul"}, {"grupo": "A", "team_a": "México", "score_a": 2, "score_b": 1, "team_b": "Coreia do Sul"}, {"grupo": "A", "team_a": "México", "score_a": 1, "score_b": 0, "team_b": "República Tcheca"}, {"grupo": "A", "team_a": "África do Sul", "score_a": 1, "score_b": 3, "team_b": "Coreia do Sul"}, {"grupo": "A", "team_a": "África do Sul", "score_a": 0, "score_b": 2, "team_b": "República Tcheca"}, {"grupo": "A", "team_a": "Coreia do Sul", "score_a": 1, "score_b": 2, "team_b": "República Tcheca"}, {"grupo": "B", "team_a": "Canadá", "score_a": 2, "score_b": 1, "team_b": "Bósnia e Herzegovina"}, {"grupo": "B", "team_a": "Canadá", "score_a": 3, "score_b": 0, "team_b": "Catar"}, {"grupo": "B", "team_a": "Canadá", "score_a": 1, "score_b": 3, "team_b": "Suíça"}, {"grupo": "B", "team_a": "Bósnia e Herzegovina", "score_a": 2, "score_b": 0, "team_b": "Catar"}, {"grupo": "B", "team_a": "Bósnia e Herzegovina", "score_a": 0, "score_b": 1, "team_b": "Suíça"}, {"grupo": "B", "team_a": "Catar", "score_a": 0, "score_b": 3, "team_b": "Suíça"}, {"grupo": "C", "team_a": "Brasil", "score_a": 2, "score_b": 0, "team_b": "Marrocos"}, {"grupo": "C", "team_a": "Brasil", "score_a": 6, "score_b": 0, "team_b": "Haiti"}, {"grupo": "C", "team_a": "Brasil", "score_a": 3, "score_b": 0, "team_b": "Escócia"}, {"grupo": "C", "team_a": "Marrocos", "score_a": 4, "score_b": 0, "team_b": "Haiti"}, {"grupo": "C", "team_a": "Marrocos", "score_a": 3, "score_b": 1, "team_b": "Escócia"}, {"grupo": "C", "team_a": "Haiti", "score_a": 0, "score_b": 2, "team_b": "Escócia"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 2, "score_b": 1, "team_b": "Paraguai"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 1, "score_b": 1, "team_b": "Austrália"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 1, "score_b": 2, "team_b": "Turquia"}, {"grupo": "D", "team_a": "Paraguai", "score_a": 3, "score_b": 2, "team_b": "Austrália"}, {"grupo": "D", "team_a": "Paraguai", "score_a": 1, "score_b": 2, "team_b": "Turquia"}, {"grupo": "D", "team_a": "Austrália", "score_a": 0, "score_b": 1, "team_b": "Turquia"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 5, "score_b": 0, "team_b": "Curaçao"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 2, "score_b": 0, "team_b": "Costa do Marfim"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 2, "score_b": 0, "team_b": "Equador"}, {"grupo": "E", "team_a": "Curaçao", "score_a": 0, "score_b": 3, "team_b": "Costa do Marfim"}, {"grupo": "E", "team_a": "Curaçao", "score_a": 0, "score_b": 3, "team_b": "Equador"}, {"grupo": "E", "team_a": "Costa do Marfim", "score_a": 1, "score_b": 2, "team_b": "Equador"}, {"grupo": "F", "team_a": "Holanda", "score_a": 1, "score_b": 1, "team_b": "Japão"}, {"grupo": "F", "team_a": "Holanda", "score_a": 1, "score_b": 0, "team_b": "Suécia"}, {"grupo": "F", "team_a": "Holanda", "score_a": 2, "score_b": 0, "team_b": "Tunísia"}, {"grupo": "F", "team_a": "Japão", "score_a": 3, "score_b": 2, "team_b": "Suécia"}, {"grupo": "F", "team_a": "Japão", "score_a": 2, "score_b": 0, "team_b": "Tunísia"}, {"grupo": "F", "team_a": "Suécia", "score_a": 2, "score_b": 1, "team_b": "Tunísia"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 2, "score_b": 1, "team_b": "Egito"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 3, "score_b": 0, "team_b": "Irã"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 3, "score_b": 0, "team_b": "Nova Zelândia"}, {"grupo": "G", "team_a": "Egito", "score_a": 2, "score_b": 2, "team_b": "Irã"}, {"grupo": "G", "team_a": "Egito", "score_a": 3, "score_b": 0, "team_b": "Nova Zelândia"}, {"grupo": "G", "team_a": "Irã", "score_a": 2, "score_b": 1, "team_b": "Nova Zelândia"}, {"grupo": "H", "team_a": "Espanha", "score_a": 5, "score_b": 0, "team_b": "Cabo Verde"}, {"grupo": "H", "team_a": "Espanha", "score_a": 3, "score_b": 0, "team_b": "Arábia Saudita"}, {"grupo": "H", "team_a": "Espanha", "score_a": 3, "score_b": 0, "team_b": "Uruguai"}, {"grupo": "H", "team_a": "Cabo Verde", "score_a": 0, "score_b": 3, "team_b": "Arábia Saudita"}, {"grupo": "H", "team_a": "Cabo Verde", "score_a": 0, "score_b": 2, "team_b": "Uruguai"}, {"grupo": "H", "team_a": "Arábia Saudita", "score_a": 1, "score_b": 1, "team_b": "Uruguai"}, {"grupo": "I", "team_a": "França", "score_a": 3, "score_b": 0, "team_b": "Senegal"}, {"grupo": "I", "team_a": "França", "score_a": 4, "score_b": 0, "team_b": "Iraque"}, {"grupo": "I", "team_a": "França", "score_a": 2, "score_b": 0, "team_b": "Noruega"}, {"grupo": "I", "team_a": "Senegal", "score_a": 2, "score_b": 0, "team_b": "Iraque"}, {"grupo": "I", "team_a": "Senegal", "score_a": 1, "score_b": 3, "team_b": "Noruega"}, {"grupo": "I", "team_a": "Iraque", "score_a": 0, "score_b": 4, "team_b": "Noruega"}, {"grupo": "J", "team_a": "Argentina", "score_a": 2, "score_b": 0, "team_b": "Argélia"}, {"grupo": "J", "team_a": "Argentina", "score_a": 2, "score_b": 0, "team_b": "Áustria"}, {"grupo": "J", "team_a": "Argentina", "score_a": 4, "score_b": 0, "team_b": "Jordânia"}, {"grupo": "J", "team_a": "Argélia", "score_a": 2, "score_b": 2, "team_b": "Áustria"}, {"grupo": "J", "team_a": "Argélia", "score_a": 1, "score_b": 0, "team_b": "Jordânia"}, {"grupo": "J", "team_a": "Áustria", "score_a": 3, "score_b": 0, "team_b": "Jordânia"}, {"grupo": "K", "team_a": "Portugal", "score_a": 3, "score_b": 0, "team_b": "Rep. D. Congo"}, {"grupo": "K", "team_a": "Portugal", "score_a": 1, "score_b": 0, "team_b": "Uzbequistão"}, {"grupo": "K", "team_a": "Portugal", "score_a": 2, "score_b": 1, "team_b": "Colômbia"}, {"grupo": "K", "team_a": "Rep. D. Congo", "score_a": 0, "score_b": 2, "team_b": "Uzbequistão"}, {"grupo": "K", "team_a": "Rep. D. Congo", "score_a": 0, "score_b": 3, "team_b": "Colômbia"}, {"grupo": "K", "team_a": "Uzbequistão", "score_a": 1, "score_b": 2, "team_b": "Colômbia"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 1, "score_b": 1, "team_b": "Croácia"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 2, "score_b": 1, "team_b": "Gana"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 5, "score_b": 1, "team_b": "Panamá"}, {"grupo": "L", "team_a": "Croácia", "score_a": 1, "score_b": 2, "team_b": "Gana"}, {"grupo": "L", "team_a": "Croácia", "score_a": 3, "score_b": 0, "team_b": "Panamá"}, {"grupo": "L", "team_a": "Gana", "score_a": 2, "score_b": 0, "team_b": "Panamá"}]}, {"name": "Alvim", "matches": [{"grupo": "A", "team_a": "México", "score_a": 2, "score_b": 1, "team_b": "África do Sul"}, {"grupo": "A", "team_a": "México", "score_a": 1, "score_b": 2, "team_b": "Coreia do Sul"}, {"grupo": "A", "team_a": "México", "score_a": 2, "score_b": 1, "team_b": "República Tcheca"}, {"grupo": "A", "team_a": "África do Sul", "score_a": 0, "score_b": 2, "team_b": "Coreia do Sul"}, {"grupo": "A", "team_a": "África do Sul", "score_a": 1, "score_b": 2, "team_b": "República Tcheca"}, {"grupo": "A", "team_a": "Coreia do Sul", "score_a": 2, "score_b": 1, "team_b": "República Tcheca"}, {"grupo": "B", "team_a": "Canadá", "score_a": 2, "score_b": 1, "team_b": "Bósnia e Herzegovina"}, {"grupo": "B", "team_a": "Canadá", "score_a": 3, "score_b": 1, "team_b": "Catar"}, {"grupo": "B", "team_a": "Canadá", "score_a": 1, "score_b": 2, "team_b": "Suíça"}, {"grupo": "B", "team_a": "Bósnia e Herzegovina", "score_a": 2, "score_b": 1, "team_b": "Catar"}, {"grupo": "B", "team_a": "Bósnia e Herzegovina", "score_a": 0, "score_b": 1, "team_b": "Suíça"}, {"grupo": "B", "team_a": "Catar", "score_a": 0, "score_b": 2, "team_b": "Suíça"}, {"grupo": "C", "team_a": "Brasil", "score_a": 2, "score_b": 0, "team_b": "Marrocos"}, {"grupo": "C", "team_a": "Brasil", "score_a": 4, "score_b": 0, "team_b": "Haiti"}, {"grupo": "C", "team_a": "Brasil", "score_a": 3, "score_b": 1, "team_b": "Escócia"}, {"grupo": "C", "team_a": "Marrocos", "score_a": 3, "score_b": 0, "team_b": "Haiti"}, {"grupo": "C", "team_a": "Marrocos", "score_a": 2, "score_b": 1, "team_b": "Escócia"}, {"grupo": "C", "team_a": "Haiti", "score_a": 1, "score_b": 3, "team_b": "Escócia"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 1, "score_b": 2, "team_b": "Paraguai"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 2, "score_b": 1, "team_b": "Austrália"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 1, "score_b": 2, "team_b": "Turquia"}, {"grupo": "D", "team_a": "Paraguai", "score_a": 1, "score_b": 0, "team_b": "Austrália"}, {"grupo": "D", "team_a": "Paraguai", "score_a": 1, "score_b": 2, "team_b": "Turquia"}, {"grupo": "D", "team_a": "Austrália", "score_a": 1, "score_b": 2, "team_b": "Turquia"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 4, "score_b": 0, "team_b": "Curaçao"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 2, "score_b": 1, "team_b": "Costa do Marfim"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 2, "score_b": 1, "team_b": "Equador"}, {"grupo": "E", "team_a": "Curaçao", "score_a": 1, "score_b": 3, "team_b": "Costa do Marfim"}, {"grupo": "E", "team_a": "Curaçao", "score_a": 1, "score_b": 3, "team_b": "Equador"}, {"grupo": "E", "team_a": "Costa do Marfim", "score_a": 1, "score_b": 2, "team_b": "Equador"}, {"grupo": "F", "team_a": "Holanda", "score_a": 1, "score_b": 2, "team_b": "Japão"}, {"grupo": "F", "team_a": "Holanda", "score_a": 2, "score_b": 1, "team_b": "Suécia"}, {"grupo": "F", "team_a": "Holanda", "score_a": 2, "score_b": 0, "team_b": "Tunísia"}, {"grupo": "F", "team_a": "Japão", "score_a": 1, "score_b": 0, "team_b": "Suécia"}, {"grupo": "F", "team_a": "Japão", "score_a": 2, "score_b": 1, "team_b": "Tunísia"}, {"grupo": "F", "team_a": "Suécia", "score_a": 2, "score_b": 1, "team_b": "Tunísia"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 3, "score_b": 1, "team_b": "Egito"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 2, "score_b": 0, "team_b": "Irã"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 2, "score_b": 1, "team_b": "Nova Zelândia"}, {"grupo": "G", "team_a": "Egito", "score_a": 2, "score_b": 1, "team_b": "Irã"}, {"grupo": "G", "team_a": "Egito", "score_a": 2, "score_b": 1, "team_b": "Nova Zelândia"}, {"grupo": "G", "team_a": "Irã", "score_a": 1, "score_b": 1, "team_b": "Nova Zelândia"}, {"grupo": "H", "team_a": "Espanha", "score_a": 4, "score_b": 0, "team_b": "Cabo Verde"}, {"grupo": "H", "team_a": "Espanha", "score_a": 3, "score_b": 1, "team_b": "Arábia Saudita"}, {"grupo": "H", "team_a": "Espanha", "score_a": 2, "score_b": 1, "team_b": "Uruguai"}, {"grupo": "H", "team_a": "Cabo Verde", "score_a": 1, "score_b": 2, "team_b": "Arábia Saudita"}, {"grupo": "H", "team_a": "Cabo Verde", "score_a": 0, "score_b": 3, "team_b": "Uruguai"}, {"grupo": "H", "team_a": "Arábia Saudita", "score_a": 1, "score_b": 2, "team_b": "Uruguai"}, {"grupo": "I", "team_a": "França", "score_a": 3, "score_b": 1, "team_b": "Senegal"}, {"grupo": "I", "team_a": "França", "score_a": 3, "score_b": 0, "team_b": "Iraque"}, {"grupo": "I", "team_a": "França", "score_a": 2, "score_b": 1, "team_b": "Noruega"}, {"grupo": "I", "team_a": "Senegal", "score_a": 3, "score_b": 1, "team_b": "Iraque"}, {"grupo": "I", "team_a": "Senegal", "score_a": 1, "score_b": 2, "team_b": "Noruega"}, {"grupo": "I", "team_a": "Iraque", "score_a": 0, "score_b": 2, "team_b": "Noruega"}, {"grupo": "J", "team_a": "Argentina", "score_a": 2, "score_b": 0, "team_b": "Argélia"}, {"grupo": "J", "team_a": "Argentina", "score_a": 2, "score_b": 1, "team_b": "Áustria"}, {"grupo": "J", "team_a": "Argentina", "score_a": 3, "score_b": 0, "team_b": "Jordânia"}, {"grupo": "J", "team_a": "Argélia", "score_a": 1, "score_b": 2, "team_b": "Áustria"}, {"grupo": "J", "team_a": "Argélia", "score_a": 3, "score_b": 1, "team_b": "Jordânia"}, {"grupo": "J", "team_a": "Áustria", "score_a": 2, "score_b": 0, "team_b": "Jordânia"}, {"grupo": "K", "team_a": "Portugal", "score_a": 3, "score_b": 1, "team_b": "Rep. D. Congo"}, {"grupo": "K", "team_a": "Portugal", "score_a": 4, "score_b": 0, "team_b": "Uzbequistão"}, {"grupo": "K", "team_a": "Portugal", "score_a": 2, "score_b": 1, "team_b": "Colômbia"}, {"grupo": "K", "team_a": "Rep. D. Congo", "score_a": 2, "score_b": 1, "team_b": "Uzbequistão"}, {"grupo": "K", "team_a": "Rep. D. Congo", "score_a": 0, "score_b": 2, "team_b": "Colômbia"}, {"grupo": "K", "team_a": "Uzbequistão", "score_a": 0, "score_b": 3, "team_b": "Colômbia"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 2, "score_b": 0, "team_b": "Croácia"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 3, "score_b": 1, "team_b": "Gana"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 3, "score_b": 0, "team_b": "Panamá"}, {"grupo": "L", "team_a": "Croácia", "score_a": 2, "score_b": 1, "team_b": "Gana"}, {"grupo": "L", "team_a": "Croácia", "score_a": 2, "score_b": 0, "team_b": "Panamá"}, {"grupo": "L", "team_a": "Gana", "score_a": 3, "score_b": 1, "team_b": "Panamá"}]}, {"name": "Hallifer", "matches": [{"grupo": "A", "team_a": "México", "score_a": 2, "score_b": 0, "team_b": "África do Sul"}, {"grupo": "A", "team_a": "México", "score_a": 3, "score_b": 1, "team_b": "Coreia do Sul"}, {"grupo": "A", "team_a": "México", "score_a": 2, "score_b": 1, "team_b": "República Tcheca"}, {"grupo": "A", "team_a": "África do Sul", "score_a": 1, "score_b": 1, "team_b": "Coreia do Sul"}, {"grupo": "A", "team_a": "África do Sul", "score_a": 2, "score_b": 1, "team_b": "República Tcheca"}, {"grupo": "A", "team_a": "Coreia do Sul", "score_a": 1, "score_b": 1, "team_b": "República Tcheca"}, {"grupo": "B", "team_a": "Canadá", "score_a": 3, "score_b": 1, "team_b": "Bósnia e Herzegovina"}, {"grupo": "B", "team_a": "Canadá", "score_a": 2, "score_b": 0, "team_b": "Catar"}, {"grupo": "B", "team_a": "Canadá", "score_a": 1, "score_b": 1, "team_b": "Suíça"}, {"grupo": "B", "team_a": "Bósnia e Herzegovina", "score_a": 1, "score_b": 1, "team_b": "Catar"}, {"grupo": "B", "team_a": "Bósnia e Herzegovina", "score_a": 0, "score_b": 2, "team_b": "Suíça"}, {"grupo": "B", "team_a": "Catar", "score_a": 1, "score_b": 1, "team_b": "Suíça"}, {"grupo": "C", "team_a": "Brasil", "score_a": 2, "score_b": 1, "team_b": "Marrocos"}, {"grupo": "C", "team_a": "Brasil", "score_a": 3, "score_b": 0, "team_b": "Haiti"}, {"grupo": "C", "team_a": "Brasil", "score_a": 2, "score_b": 0, "team_b": "Escócia"}, {"grupo": "C", "team_a": "Marrocos", "score_a": 2, "score_b": 1, "team_b": "Haiti"}, {"grupo": "C", "team_a": "Marrocos", "score_a": 1, "score_b": 1, "team_b": "Escócia"}, {"grupo": "C", "team_a": "Haiti", "score_a": 0, "score_b": 1, "team_b": "Escócia"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 3, "score_b": 1, "team_b": "Paraguai"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 2, "score_b": 1, "team_b": "Austrália"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 3, "score_b": 0, "team_b": "Turquia"}, {"grupo": "D", "team_a": "Paraguai", "score_a": 1, "score_b": 1, "team_b": "Austrália"}, {"grupo": "D", "team_a": "Paraguai", "score_a": 2, "score_b": 1, "team_b": "Turquia"}, {"grupo": "D", "team_a": "Austrália", "score_a": 2, "score_b": 1, "team_b": "Turquia"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 3, "score_b": 1, "team_b": "Curaçao"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 2, "score_b": 1, "team_b": "Costa do Marfim"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 1, "score_b": 1, "team_b": "Equador"}, {"grupo": "E", "team_a": "Curaçao", "score_a": 1, "score_b": 1, "team_b": "Costa do Marfim"}, {"grupo": "E", "team_a": "Curaçao", "score_a": 0, "score_b": 3, "team_b": "Equador"}, {"grupo": "E", "team_a": "Costa do Marfim", "score_a": 1, "score_b": 2, "team_b": "Equador"}, {"grupo": "F", "team_a": "Holanda", "score_a": 2, "score_b": 1, "team_b": "Japão"}, {"grupo": "F", "team_a": "Holanda", "score_a": 2, "score_b": 1, "team_b": "Suécia"}, {"grupo": "F", "team_a": "Holanda", "score_a": 1, "score_b": 0, "team_b": "Tunísia"}, {"grupo": "F", "team_a": "Japão", "score_a": 2, "score_b": 1, "team_b": "Suécia"}, {"grupo": "F", "team_a": "Japão", "score_a": 2, "score_b": 0, "team_b": "Tunísia"}, {"grupo": "F", "team_a": "Suécia", "score_a": 1, "score_b": 0, "team_b": "Tunísia"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 2, "score_b": 0, "team_b": "Egito"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 3, "score_b": 1, "team_b": "Irã"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 2, "score_b": 0, "team_b": "Nova Zelândia"}, {"grupo": "G", "team_a": "Egito", "score_a": 1, "score_b": 1, "team_b": "Irã"}, {"grupo": "G", "team_a": "Egito", "score_a": 2, "score_b": 1, "team_b": "Nova Zelândia"}, {"grupo": "G", "team_a": "Irã", "score_a": 1, "score_b": 0, "team_b": "Nova Zelândia"}, {"grupo": "H", "team_a": "Espanha", "score_a": 3, "score_b": 0, "team_b": "Cabo Verde"}, {"grupo": "H", "team_a": "Espanha", "score_a": 2, "score_b": 0, "team_b": "Arábia Saudita"}, {"grupo": "H", "team_a": "Espanha", "score_a": 1, "score_b": 1, "team_b": "Uruguai"}, {"grupo": "H", "team_a": "Cabo Verde", "score_a": 1, "score_b": 1, "team_b": "Arábia Saudita"}, {"grupo": "H", "team_a": "Cabo Verde", "score_a": 0, "score_b": 2, "team_b": "Uruguai"}, {"grupo": "H", "team_a": "Arábia Saudita", "score_a": 1, "score_b": 2, "team_b": "Uruguai"}, {"grupo": "I", "team_a": "França", "score_a": 2, "score_b": 0, "team_b": "Senegal"}, {"grupo": "I", "team_a": "França", "score_a": 3, "score_b": 1, "team_b": "Iraque"}, {"grupo": "I", "team_a": "França", "score_a": 2, "score_b": 1, "team_b": "Noruega"}, {"grupo": "I", "team_a": "Senegal", "score_a": 2, "score_b": 1, "team_b": "Iraque"}, {"grupo": "I", "team_a": "Senegal", "score_a": 1, "score_b": 1, "team_b": "Noruega"}, {"grupo": "I", "team_a": "Iraque", "score_a": 0, "score_b": 2, "team_b": "Noruega"}, {"grupo": "J", "team_a": "Argentina", "score_a": 3, "score_b": 0, "team_b": "Argélia"}, {"grupo": "J", "team_a": "Argentina", "score_a": 2, "score_b": 0, "team_b": "Áustria"}, {"grupo": "J", "team_a": "Argentina", "score_a": 3, "score_b": 1, "team_b": "Jordânia"}, {"grupo": "J", "team_a": "Argélia", "score_a": 1, "score_b": 1, "team_b": "Áustria"}, {"grupo": "J", "team_a": "Argélia", "score_a": 2, "score_b": 1, "team_b": "Jordânia"}, {"grupo": "J", "team_a": "Áustria", "score_a": 2, "score_b": 0, "team_b": "Jordânia"}, {"grupo": "K", "team_a": "Portugal", "score_a": 3, "score_b": 0, "team_b": "Rep. D. Congo"}, {"grupo": "K", "team_a": "Portugal", "score_a": 2, "score_b": 1, "team_b": "Uzbequistão"}, {"grupo": "K", "team_a": "Portugal", "score_a": 1, "score_b": 1, "team_b": "Colômbia"}, {"grupo": "K", "team_a": "Rep. D. Congo", "score_a": 1, "score_b": 1, "team_b": "Uzbequistão"}, {"grupo": "K", "team_a": "Rep. D. Congo", "score_a": 0, "score_b": 2, "team_b": "Colômbia"}, {"grupo": "K", "team_a": "Uzbequistão", "score_a": 1, "score_b": 2, "team_b": "Colômbia"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 2, "score_b": 1, "team_b": "Croácia"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 2, "score_b": 0, "team_b": "Gana"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 1, "score_b": 1, "team_b": "Panamá"}, {"grupo": "L", "team_a": "Croácia", "score_a": 2, "score_b": 0, "team_b": "Gana"}, {"grupo": "L", "team_a": "Croácia", "score_a": 2, "score_b": 1, "team_b": "Panamá"}, {"grupo": "L", "team_a": "Gana", "score_a": 1, "score_b": 1, "team_b": "Panamá"}]}, {"name": "Biscoito", "matches": [{"grupo": "A", "team_a": "México", "score_a": 2, "score_b": 0, "team_b": "África do Sul"}, {"grupo": "A", "team_a": "México", "score_a": 1, "score_b": 1, "team_b": "Coreia do Sul"}, {"grupo": "A", "team_a": "México", "score_a": 0, "score_b": 1, "team_b": "República Tcheca"}, {"grupo": "A", "team_a": "África do Sul", "score_a": 0, "score_b": 2, "team_b": "Coreia do Sul"}, {"grupo": "A", "team_a": "África do Sul", "score_a": 1, "score_b": 2, "team_b": "República Tcheca"}, {"grupo": "A", "team_a": "Coreia do Sul", "score_a": 2, "score_b": 2, "team_b": "República Tcheca"}, {"grupo": "B", "team_a": "Canadá", "score_a": 0, "score_b": 0, "team_b": "Bósnia e Herzegovina"}, {"grupo": "B", "team_a": "Canadá", "score_a": 1, "score_b": 1, "team_b": "Catar"}, {"grupo": "B", "team_a": "Canadá", "score_a": 0, "score_b": 2, "team_b": "Suíça"}, {"grupo": "B", "team_a": "Bósnia e Herzegovina", "score_a": 1, "score_b": 1, "team_b": "Catar"}, {"grupo": "B", "team_a": "Bósnia e Herzegovina", "score_a": 1, "score_b": 2, "team_b": "Suíça"}, {"grupo": "B", "team_a": "Catar", "score_a": 1, "score_b": 1, "team_b": "Suíça"}, {"grupo": "C", "team_a": "Brasil", "score_a": 2, "score_b": 1, "team_b": "Marrocos"}, {"grupo": "C", "team_a": "Brasil", "score_a": 3, "score_b": 0, "team_b": "Haiti"}, {"grupo": "C", "team_a": "Brasil", "score_a": 1, "score_b": 1, "team_b": "Escócia"}, {"grupo": "C", "team_a": "Marrocos", "score_a": 4, "score_b": 0, "team_b": "Haiti"}, {"grupo": "C", "team_a": "Marrocos", "score_a": 1, "score_b": 0, "team_b": "Escócia"}, {"grupo": "C", "team_a": "Haiti", "score_a": 0, "score_b": 3, "team_b": "Escócia"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 2, "score_b": 1, "team_b": "Paraguai"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 2, "score_b": 0, "team_b": "Austrália"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 1, "score_b": 1, "team_b": "Turquia"}, {"grupo": "D", "team_a": "Paraguai", "score_a": 1, "score_b": 1, "team_b": "Austrália"}, {"grupo": "D", "team_a": "Paraguai", "score_a": 0, "score_b": 2, "team_b": "Turquia"}, {"grupo": "D", "team_a": "Austrália", "score_a": 0, "score_b": 0, "team_b": "Turquia"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 3, "score_b": 0, "team_b": "Curaçao"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 2, "score_b": 1, "team_b": "Costa do Marfim"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 2, "score_b": 0, "team_b": "Equador"}, {"grupo": "E", "team_a": "Curaçao", "score_a": 0, "score_b": 2, "team_b": "Costa do Marfim"}, {"grupo": "E", "team_a": "Curaçao", "score_a": 1, "score_b": 1, "team_b": "Equador"}, {"grupo": "E", "team_a": "Costa do Marfim", "score_a": 2, "score_b": 2, "team_b": "Equador"}, {"grupo": "F", "team_a": "Holanda", "score_a": 1, "score_b": 1, "team_b": "Japão"}, {"grupo": "F", "team_a": "Holanda", "score_a": 3, "score_b": 1, "team_b": "Suécia"}, {"grupo": "F", "team_a": "Holanda", "score_a": 4, "score_b": 0, "team_b": "Tunísia"}, {"grupo": "F", "team_a": "Japão", "score_a": 2, "score_b": 1, "team_b": "Suécia"}, {"grupo": "F", "team_a": "Japão", "score_a": 3, "score_b": 0, "team_b": "Tunísia"}, {"grupo": "F", "team_a": "Suécia", "score_a": 2, "score_b": 1, "team_b": "Tunísia"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 3, "score_b": 1, "team_b": "Egito"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 2, "score_b": 1, "team_b": "Irã"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 3, "score_b": 0, "team_b": "Nova Zelândia"}, {"grupo": "G", "team_a": "Egito", "score_a": 3, "score_b": 2, "team_b": "Irã"}, {"grupo": "G", "team_a": "Egito", "score_a": 1, "score_b": 1, "team_b": "Nova Zelândia"}, {"grupo": "G", "team_a": "Irã", "score_a": 2, "score_b": 1, "team_b": "Nova Zelândia"}, {"grupo": "H", "team_a": "Espanha", "score_a": 5, "score_b": 0, "team_b": "Cabo Verde"}, {"grupo": "H", "team_a": "Espanha", "score_a": 3, "score_b": 1, "team_b": "Arábia Saudita"}, {"grupo": "H", "team_a": "Espanha", "score_a": 2, "score_b": 1, "team_b": "Uruguai"}, {"grupo": "H", "team_a": "Cabo Verde", "score_a": 0, "score_b": 2, "team_b": "Arábia Saudita"}, {"grupo": "H", "team_a": "Cabo Verde", "score_a": 1, "score_b": 3, "team_b": "Uruguai"}, {"grupo": "H", "team_a": "Arábia Saudita", "score_a": 2, "score_b": 2, "team_b": "Uruguai"}, {"grupo": "I", "team_a": "França", "score_a": 2, "score_b": 1, "team_b": "Senegal"}, {"grupo": "I", "team_a": "França", "score_a": 4, "score_b": 0, "team_b": "Iraque"}, {"grupo": "I", "team_a": "França", "score_a": 2, "score_b": 1, "team_b": "Noruega"}, {"grupo": "I", "team_a": "Senegal", "score_a": 2, "score_b": 0, "team_b": "Iraque"}, {"grupo": "I", "team_a": "Senegal", "score_a": 2, "score_b": 2, "team_b": "Noruega"}, {"grupo": "I", "team_a": "Iraque", "score_a": 1, "score_b": 3, "team_b": "Noruega"}, {"grupo": "J", "team_a": "Argentina", "score_a": 2, "score_b": 0, "team_b": "Argélia"}, {"grupo": "J", "team_a": "Argentina", "score_a": 1, "score_b": 1, "team_b": "Áustria"}, {"grupo": "J", "team_a": "Argentina", "score_a": 3, "score_b": 0, "team_b": "Jordânia"}, {"grupo": "J", "team_a": "Argélia", "score_a": 1, "score_b": 2, "team_b": "Áustria"}, {"grupo": "J", "team_a": "Argélia", "score_a": 1, "score_b": 1, "team_b": "Jordânia"}, {"grupo": "J", "team_a": "Áustria", "score_a": 2, "score_b": 0, "team_b": "Jordânia"}, {"grupo": "K", "team_a": "Portugal", "score_a": 3, "score_b": 0, "team_b": "Rep. D. Congo"}, {"grupo": "K", "team_a": "Portugal", "score_a": 2, "score_b": 0, "team_b": "Uzbequistão"}, {"grupo": "K", "team_a": "Portugal", "score_a": 3, "score_b": 2, "team_b": "Colômbia"}, {"grupo": "K", "team_a": "Rep. D. Congo", "score_a": 0, "score_b": 1, "team_b": "Uzbequistão"}, {"grupo": "K", "team_a": "Rep. D. Congo", "score_a": 1, "score_b": 3, "team_b": "Colômbia"}, {"grupo": "K", "team_a": "Uzbequistão", "score_a": 2, "score_b": 2, "team_b": "Colômbia"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 2, "score_b": 1, "team_b": "Croácia"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 1, "score_b": 1, "team_b": "Gana"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 3, "score_b": 0, "team_b": "Panamá"}, {"grupo": "L", "team_a": "Croácia", "score_a": 2, "score_b": 2, "team_b": "Gana"}, {"grupo": "L", "team_a": "Croácia", "score_a": 1, "score_b": 0, "team_b": "Panamá"}, {"grupo": "L", "team_a": "Gana", "score_a": 2, "score_b": 1, "team_b": "Panamá"}]}, {"name": "Rick", "matches": [{"grupo": "A", "team_a": "México", "score_a": 2, "score_b": 1, "team_b": "África do Sul"}, {"grupo": "A", "team_a": "México", "score_a": 1, "score_b": 2, "team_b": "Coreia do Sul"}, {"grupo": "A", "team_a": "México", "score_a": 0, "score_b": 2, "team_b": "República Tcheca"}, {"grupo": "A", "team_a": "África do Sul", "score_a": 0, "score_b": 3, "team_b": "Coreia do Sul"}, {"grupo": "A", "team_a": "África do Sul", "score_a": 1, "score_b": 3, "team_b": "República Tcheca"}, {"grupo": "A", "team_a": "Coreia do Sul", "score_a": 1, "score_b": 1, "team_b": "República Tcheca"}, {"grupo": "B", "team_a": "Canadá", "score_a": 1, "score_b": 2, "team_b": "Bósnia e Herzegovina"}, {"grupo": "B", "team_a": "Canadá", "score_a": 2, "score_b": 0, "team_b": "Catar"}, {"grupo": "B", "team_a": "Canadá", "score_a": 1, "score_b": 1, "team_b": "Suíça"}, {"grupo": "B", "team_a": "Bósnia e Herzegovina", "score_a": 2, "score_b": 0, "team_b": "Catar"}, {"grupo": "B", "team_a": "Bósnia e Herzegovina", "score_a": 2, "score_b": 1, "team_b": "Suíça"}, {"grupo": "B", "team_a": "Catar", "score_a": 1, "score_b": 2, "team_b": "Suíça"}, {"grupo": "C", "team_a": "Brasil", "score_a": 2, "score_b": 1, "team_b": "Marrocos"}, {"grupo": "C", "team_a": "Brasil", "score_a": 5, "score_b": 1, "team_b": "Haiti"}, {"grupo": "C", "team_a": "Brasil", "score_a": 3, "score_b": 1, "team_b": "Escócia"}, {"grupo": "C", "team_a": "Marrocos", "score_a": 4, "score_b": 0, "team_b": "Haiti"}, {"grupo": "C", "team_a": "Marrocos", "score_a": 2, "score_b": 0, "team_b": "Escócia"}, {"grupo": "C", "team_a": "Haiti", "score_a": 1, "score_b": 2, "team_b": "Escócia"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 1, "score_b": 1, "team_b": "Paraguai"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 1, "score_b": 1, "team_b": "Austrália"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 0, "score_b": 2, "team_b": "Turquia"}, {"grupo": "D", "team_a": "Paraguai", "score_a": 2, "score_b": 1, "team_b": "Austrália"}, {"grupo": "D", "team_a": "Paraguai", "score_a": 1, "score_b": 2, "team_b": "Turquia"}, {"grupo": "D", "team_a": "Austrália", "score_a": 0, "score_b": 2, "team_b": "Turquia"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 6, "score_b": 0, "team_b": "Curaçao"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 4, "score_b": 1, "team_b": "Costa do Marfim"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 2, "score_b": 2, "team_b": "Equador"}, {"grupo": "E", "team_a": "Curaçao", "score_a": 1, "score_b": 2, "team_b": "Costa do Marfim"}, {"grupo": "E", "team_a": "Curaçao", "score_a": 0, "score_b": 3, "team_b": "Equador"}, {"grupo": "E", "team_a": "Costa do Marfim", "score_a": 1, "score_b": 2, "team_b": "Equador"}, {"grupo": "F", "team_a": "Holanda", "score_a": 2, "score_b": 1, "team_b": "Japão"}, {"grupo": "F", "team_a": "Holanda", "score_a": 1, "score_b": 1, "team_b": "Suécia"}, {"grupo": "F", "team_a": "Holanda", "score_a": 2, "score_b": 0, "team_b": "Tunísia"}, {"grupo": "F", "team_a": "Japão", "score_a": 1, "score_b": 2, "team_b": "Suécia"}, {"grupo": "F", "team_a": "Japão", "score_a": 2, "score_b": 0, "team_b": "Tunísia"}, {"grupo": "F", "team_a": "Suécia", "score_a": 2, "score_b": 1, "team_b": "Tunísia"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 3, "score_b": 1, "team_b": "Egito"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 2, "score_b": 0, "team_b": "Irã"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 2, "score_b": 0, "team_b": "Nova Zelândia"}, {"grupo": "G", "team_a": "Egito", "score_a": 2, "score_b": 1, "team_b": "Irã"}, {"grupo": "G", "team_a": "Egito", "score_a": 3, "score_b": 1, "team_b": "Nova Zelândia"}, {"grupo": "G", "team_a": "Irã", "score_a": 1, "score_b": 2, "team_b": "Nova Zelândia"}, {"grupo": "H", "team_a": "Espanha", "score_a": 7, "score_b": 0, "team_b": "Cabo Verde"}, {"grupo": "H", "team_a": "Espanha", "score_a": 3, "score_b": 1, "team_b": "Arábia Saudita"}, {"grupo": "H", "team_a": "Espanha", "score_a": 3, "score_b": 1, "team_b": "Uruguai"}, {"grupo": "H", "team_a": "Cabo Verde", "score_a": 1, "score_b": 2, "team_b": "Arábia Saudita"}, {"grupo": "H", "team_a": "Cabo Verde", "score_a": 0, "score_b": 3, "team_b": "Uruguai"}, {"grupo": "H", "team_a": "Arábia Saudita", "score_a": 1, "score_b": 2, "team_b": "Uruguai"}, {"grupo": "I", "team_a": "França", "score_a": 3, "score_b": 1, "team_b": "Senegal"}, {"grupo": "I", "team_a": "França", "score_a": 6, "score_b": 1, "team_b": "Iraque"}, {"grupo": "I", "team_a": "França", "score_a": 2, "score_b": 1, "team_b": "Noruega"}, {"grupo": "I", "team_a": "Senegal", "score_a": 2, "score_b": 0, "team_b": "Iraque"}, {"grupo": "I", "team_a": "Senegal", "score_a": 2, "score_b": 2, "team_b": "Noruega"}, {"grupo": "I", "team_a": "Iraque", "score_a": 0, "score_b": 3, "team_b": "Noruega"}, {"grupo": "J", "team_a": "Argentina", "score_a": 4, "score_b": 1, "team_b": "Argélia"}, {"grupo": "J", "team_a": "Argentina", "score_a": 3, "score_b": 1, "team_b": "Áustria"}, {"grupo": "J", "team_a": "Argentina", "score_a": 5, "score_b": 0, "team_b": "Jordânia"}, {"grupo": "J", "team_a": "Argélia", "score_a": 1, "score_b": 2, "team_b": "Áustria"}, {"grupo": "J", "team_a": "Argélia", "score_a": 2, "score_b": 1, "team_b": "Jordânia"}, {"grupo": "J", "team_a": "Áustria", "score_a": 3, "score_b": 1, "team_b": "Jordânia"}, {"grupo": "K", "team_a": "Portugal", "score_a": 5, "score_b": 0, "team_b": "Rep. D. Congo"}, {"grupo": "K", "team_a": "Portugal", "score_a": 4, "score_b": 1, "team_b": "Uzbequistão"}, {"grupo": "K", "team_a": "Portugal", "score_a": 2, "score_b": 1, "team_b": "Colômbia"}, {"grupo": "K", "team_a": "Rep. D. Congo", "score_a": 2, "score_b": 2, "team_b": "Uzbequistão"}, {"grupo": "K", "team_a": "Rep. D. Congo", "score_a": 0, "score_b": 3, "team_b": "Colômbia"}, {"grupo": "K", "team_a": "Uzbequistão", "score_a": 1, "score_b": 2, "team_b": "Colômbia"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 2, "score_b": 1, "team_b": "Croácia"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 3, "score_b": 1, "team_b": "Gana"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 4, "score_b": 1, "team_b": "Panamá"}, {"grupo": "L", "team_a": "Croácia", "score_a": 3, "score_b": 0, "team_b": "Gana"}, {"grupo": "L", "team_a": "Croácia", "score_a": 4, "score_b": 0, "team_b": "Panamá"}, {"grupo": "L", "team_a": "Gana", "score_a": 2, "score_b": 2, "team_b": "Panamá"}]}, {"name": "Kaynan", "matches": [{"grupo": "A", "team_a": "México", "score_a": 2, "score_b": 1, "team_b": "África do Sul"}, {"grupo": "A", "team_a": "México", "score_a": 1, "score_b": 1, "team_b": "Coreia do Sul"}, {"grupo": "A", "team_a": "México", "score_a": 3, "score_b": 0, "team_b": "República Tcheca"}, {"grupo": "A", "team_a": "África do Sul", "score_a": 0, "score_b": 2, "team_b": "Coreia do Sul"}, {"grupo": "A", "team_a": "África do Sul", "score_a": 1, "score_b": 0, "team_b": "República Tcheca"}, {"grupo": "A", "team_a": "Coreia do Sul", "score_a": 2, "score_b": 0, "team_b": "República Tcheca"}, {"grupo": "B", "team_a": "Canadá", "score_a": 2, "score_b": 0, "team_b": "Bósnia e Herzegovina"}, {"grupo": "B", "team_a": "Canadá", "score_a": 1, "score_b": 1, "team_b": "Catar"}, {"grupo": "B", "team_a": "Canadá", "score_a": 0, "score_b": 2, "team_b": "Suíça"}, {"grupo": "B", "team_a": "Bósnia e Herzegovina", "score_a": 1, "score_b": 2, "team_b": "Catar"}, {"grupo": "B", "team_a": "Bósnia e Herzegovina", "score_a": 0, "score_b": 2, "team_b": "Suíça"}, {"grupo": "B", "team_a": "Catar", "score_a": 1, "score_b": 2, "team_b": "Suíça"}, {"grupo": "C", "team_a": "Brasil", "score_a": 2, "score_b": 1, "team_b": "Marrocos"}, {"grupo": "C", "team_a": "Brasil", "score_a": 5, "score_b": 0, "team_b": "Haiti"}, {"grupo": "C", "team_a": "Brasil", "score_a": 3, "score_b": 0, "team_b": "Escócia"}, {"grupo": "C", "team_a": "Marrocos", "score_a": 3, "score_b": 0, "team_b": "Haiti"}, {"grupo": "C", "team_a": "Marrocos", "score_a": 2, "score_b": 0, "team_b": "Escócia"}, {"grupo": "C", "team_a": "Haiti", "score_a": 0, "score_b": 2, "team_b": "Escócia"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 1, "score_b": 3, "team_b": "Paraguai"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 2, "score_b": 1, "team_b": "Austrália"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 2, "score_b": 2, "team_b": "Turquia"}, {"grupo": "D", "team_a": "Paraguai", "score_a": 2, "score_b": 1, "team_b": "Austrália"}, {"grupo": "D", "team_a": "Paraguai", "score_a": 1, "score_b": 1, "team_b": "Turquia"}, {"grupo": "D", "team_a": "Austrália", "score_a": 0, "score_b": 2, "team_b": "Turquia"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 4, "score_b": 0, "team_b": "Curaçao"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 1, "score_b": 2, "team_b": "Costa do Marfim"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 1, "score_b": 2, "team_b": "Equador"}, {"grupo": "E", "team_a": "Curaçao", "score_a": 0, "score_b": 3, "team_b": "Costa do Marfim"}, {"grupo": "E", "team_a": "Curaçao", "score_a": 0, "score_b": 2, "team_b": "Equador"}, {"grupo": "E", "team_a": "Costa do Marfim", "score_a": 0, "score_b": 2, "team_b": "Equador"}, {"grupo": "F", "team_a": "Holanda", "score_a": 2, "score_b": 0, "team_b": "Japão"}, {"grupo": "F", "team_a": "Holanda", "score_a": 3, "score_b": 1, "team_b": "Suécia"}, {"grupo": "F", "team_a": "Holanda", "score_a": 2, "score_b": 1, "team_b": "Tunísia"}, {"grupo": "F", "team_a": "Japão", "score_a": 2, "score_b": 1, "team_b": "Suécia"}, {"grupo": "F", "team_a": "Japão", "score_a": 1, "score_b": 0, "team_b": "Tunísia"}, {"grupo": "F", "team_a": "Suécia", "score_a": 1, "score_b": 0, "team_b": "Tunísia"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 2, "score_b": 1, "team_b": "Egito"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 3, "score_b": 0, "team_b": "Irã"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 4, "score_b": 0, "team_b": "Nova Zelândia"}, {"grupo": "G", "team_a": "Egito", "score_a": 2, "score_b": 0, "team_b": "Irã"}, {"grupo": "G", "team_a": "Egito", "score_a": 3, "score_b": 1, "team_b": "Nova Zelândia"}, {"grupo": "G", "team_a": "Irã", "score_a": 1, "score_b": 1, "team_b": "Nova Zelândia"}, {"grupo": "H", "team_a": "Espanha", "score_a": 6, "score_b": 0, "team_b": "Cabo Verde"}, {"grupo": "H", "team_a": "Espanha", "score_a": 2, "score_b": 0, "team_b": "Arábia Saudita"}, {"grupo": "H", "team_a": "Espanha", "score_a": 2, "score_b": 1, "team_b": "Uruguai"}, {"grupo": "H", "team_a": "Cabo Verde", "score_a": 0, "score_b": 3, "team_b": "Arábia Saudita"}, {"grupo": "H", "team_a": "Cabo Verde", "score_a": 0, "score_b": 4, "team_b": "Uruguai"}, {"grupo": "H", "team_a": "Arábia Saudita", "score_a": 0, "score_b": 2, "team_b": "Uruguai"}, {"grupo": "I", "team_a": "França", "score_a": 2, "score_b": 0, "team_b": "Senegal"}, {"grupo": "I", "team_a": "França", "score_a": 3, "score_b": 0, "team_b": "Iraque"}, {"grupo": "I", "team_a": "França", "score_a": 2, "score_b": 0, "team_b": "Noruega"}, {"grupo": "I", "team_a": "Senegal", "score_a": 1, "score_b": 1, "team_b": "Iraque"}, {"grupo": "I", "team_a": "Senegal", "score_a": 1, "score_b": 2, "team_b": "Noruega"}, {"grupo": "I", "team_a": "Iraque", "score_a": 0, "score_b": 3, "team_b": "Noruega"}, {"grupo": "J", "team_a": "Argentina", "score_a": 3, "score_b": 0, "team_b": "Argélia"}, {"grupo": "J", "team_a": "Argentina", "score_a": 3, "score_b": 0, "team_b": "Áustria"}, {"grupo": "J", "team_a": "Argentina", "score_a": 5, "score_b": 0, "team_b": "Jordânia"}, {"grupo": "J", "team_a": "Argélia", "score_a": 1, "score_b": 2, "team_b": "Áustria"}, {"grupo": "J", "team_a": "Argélia", "score_a": 1, "score_b": 1, "team_b": "Jordânia"}, {"grupo": "J", "team_a": "Áustria", "score_a": 2, "score_b": 0, "team_b": "Jordânia"}, {"grupo": "K", "team_a": "Portugal", "score_a": 3, "score_b": 0, "team_b": "Rep. D. Congo"}, {"grupo": "K", "team_a": "Portugal", "score_a": 2, "score_b": 0, "team_b": "Uzbequistão"}, {"grupo": "K", "team_a": "Portugal", "score_a": 2, "score_b": 2, "team_b": "Colômbia"}, {"grupo": "K", "team_a": "Rep. D. Congo", "score_a": 0, "score_b": 0, "team_b": "Uzbequistão"}, {"grupo": "K", "team_a": "Rep. D. Congo", "score_a": 0, "score_b": 3, "team_b": "Colômbia"}, {"grupo": "K", "team_a": "Uzbequistão", "score_a": 0, "score_b": 2, "team_b": "Colômbia"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 2, "score_b": 2, "team_b": "Croácia"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 3, "score_b": 1, "team_b": "Gana"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 2, "score_b": 0, "team_b": "Panamá"}, {"grupo": "L", "team_a": "Croácia", "score_a": 2, "score_b": 0, "team_b": "Gana"}, {"grupo": "L", "team_a": "Croácia", "score_a": 3, "score_b": 0, "team_b": "Panamá"}, {"grupo": "L", "team_a": "Gana", "score_a": 1, "score_b": 1, "team_b": "Panamá"}]}, {"name": "Cezinha", "matches": [{"grupo": "A", "team_a": "México", "score_a": 2, "score_b": 0, "team_b": "África do Sul"}, {"grupo": "A", "team_a": "México", "score_a": 1, "score_b": 0, "team_b": "Coreia do Sul"}, {"grupo": "A", "team_a": "México", "score_a": 2, "score_b": 2, "team_b": "República Tcheca"}, {"grupo": "A", "team_a": "África do Sul", "score_a": 1, "score_b": 1, "team_b": "Coreia do Sul"}, {"grupo": "A", "team_a": "África do Sul", "score_a": 0, "score_b": 2, "team_b": "República Tcheca"}, {"grupo": "A", "team_a": "Coreia do Sul", "score_a": 1, "score_b": 2, "team_b": "República Tcheca"}, {"grupo": "B", "team_a": "Canadá", "score_a": 1, "score_b": 1, "team_b": "Bósnia e Herzegovina"}, {"grupo": "B", "team_a": "Canadá", "score_a": 2, "score_b": 0, "team_b": "Catar"}, {"grupo": "B", "team_a": "Canadá", "score_a": 0, "score_b": 2, "team_b": "Suíça"}, {"grupo": "B", "team_a": "Bósnia e Herzegovina", "score_a": 1, "score_b": 0, "team_b": "Catar"}, {"grupo": "B", "team_a": "Bósnia e Herzegovina", "score_a": 1, "score_b": 2, "team_b": "Suíça"}, {"grupo": "B", "team_a": "Catar", "score_a": 0, "score_b": 3, "team_b": "Suíça"}, {"grupo": "C", "team_a": "Brasil", "score_a": 2, "score_b": 1, "team_b": "Marrocos"}, {"grupo": "C", "team_a": "Brasil", "score_a": 4, "score_b": 0, "team_b": "Haiti"}, {"grupo": "C", "team_a": "Brasil", "score_a": 3, "score_b": 1, "team_b": "Escócia"}, {"grupo": "C", "team_a": "Marrocos", "score_a": 2, "score_b": 0, "team_b": "Haiti"}, {"grupo": "C", "team_a": "Marrocos", "score_a": 1, "score_b": 1, "team_b": "Escócia"}, {"grupo": "C", "team_a": "Haiti", "score_a": 1, "score_b": 2, "team_b": "Escócia"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 1, "score_b": 1, "team_b": "Paraguai"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 2, "score_b": 1, "team_b": "Austrália"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 0, "score_b": 2, "team_b": "Turquia"}, {"grupo": "D", "team_a": "Paraguai", "score_a": 2, "score_b": 0, "team_b": "Austrália"}, {"grupo": "D", "team_a": "Paraguai", "score_a": 2, "score_b": 2, "team_b": "Turquia"}, {"grupo": "D", "team_a": "Austrália", "score_a": 1, "score_b": 3, "team_b": "Turquia"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 4, "score_b": 0, "team_b": "Curaçao"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 2, "score_b": 1, "team_b": "Costa do Marfim"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 1, "score_b": 0, "team_b": "Equador"}, {"grupo": "E", "team_a": "Curaçao", "score_a": 1, "score_b": 2, "team_b": "Costa do Marfim"}, {"grupo": "E", "team_a": "Curaçao", "score_a": 0, "score_b": 2, "team_b": "Equador"}, {"grupo": "E", "team_a": "Costa do Marfim", "score_a": 0, "score_b": 0, "team_b": "Equador"}, {"grupo": "F", "team_a": "Holanda", "score_a": 1, "score_b": 1, "team_b": "Japão"}, {"grupo": "F", "team_a": "Holanda", "score_a": 2, "score_b": 1, "team_b": "Suécia"}, {"grupo": "F", "team_a": "Holanda", "score_a": 2, "score_b": 0, "team_b": "Tunísia"}, {"grupo": "F", "team_a": "Japão", "score_a": 2, "score_b": 2, "team_b": "Suécia"}, {"grupo": "F", "team_a": "Japão", "score_a": 2, "score_b": 0, "team_b": "Tunísia"}, {"grupo": "F", "team_a": "Suécia", "score_a": 1, "score_b": 0, "team_b": "Tunísia"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 2, "score_b": 0, "team_b": "Egito"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 3, "score_b": 1, "team_b": "Irã"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 2, "score_b": 0, "team_b": "Nova Zelândia"}, {"grupo": "G", "team_a": "Egito", "score_a": 3, "score_b": 0, "team_b": "Irã"}, {"grupo": "G", "team_a": "Egito", "score_a": 0, "score_b": 0, "team_b": "Nova Zelândia"}, {"grupo": "G", "team_a": "Irã", "score_a": 0, "score_b": 1, "team_b": "Nova Zelândia"}, {"grupo": "H", "team_a": "Espanha", "score_a": 6, "score_b": 0, "team_b": "Cabo Verde"}, {"grupo": "H", "team_a": "Espanha", "score_a": 3, "score_b": 1, "team_b": "Arábia Saudita"}, {"grupo": "H", "team_a": "Espanha", "score_a": 2, "score_b": 1, "team_b": "Uruguai"}, {"grupo": "H", "team_a": "Cabo Verde", "score_a": 0, "score_b": 2, "team_b": "Arábia Saudita"}, {"grupo": "H", "team_a": "Cabo Verde", "score_a": 0, "score_b": 2, "team_b": "Uruguai"}, {"grupo": "H", "team_a": "Arábia Saudita", "score_a": 1, "score_b": 2, "team_b": "Uruguai"}, {"grupo": "I", "team_a": "França", "score_a": 3, "score_b": 1, "team_b": "Senegal"}, {"grupo": "I", "team_a": "França", "score_a": 4, "score_b": 0, "team_b": "Iraque"}, {"grupo": "I", "team_a": "França", "score_a": 2, "score_b": 1, "team_b": "Noruega"}, {"grupo": "I", "team_a": "Senegal", "score_a": 1, "score_b": 0, "team_b": "Iraque"}, {"grupo": "I", "team_a": "Senegal", "score_a": 2, "score_b": 2, "team_b": "Noruega"}, {"grupo": "I", "team_a": "Iraque", "score_a": 0, "score_b": 2, "team_b": "Noruega"}, {"grupo": "J", "team_a": "Argentina", "score_a": 3, "score_b": 1, "team_b": "Argélia"}, {"grupo": "J", "team_a": "Argentina", "score_a": 1, "score_b": 0, "team_b": "Áustria"}, {"grupo": "J", "team_a": "Argentina", "score_a": 2, "score_b": 0, "team_b": "Jordânia"}, {"grupo": "J", "team_a": "Argélia", "score_a": 1, "score_b": 1, "team_b": "Áustria"}, {"grupo": "J", "team_a": "Argélia", "score_a": 0, "score_b": 0, "team_b": "Jordânia"}, {"grupo": "J", "team_a": "Áustria", "score_a": 2, "score_b": 1, "team_b": "Jordânia"}, {"grupo": "K", "team_a": "Portugal", "score_a": 2, "score_b": 0, "team_b": "Rep. D. Congo"}, {"grupo": "K", "team_a": "Portugal", "score_a": 3, "score_b": 0, "team_b": "Uzbequistão"}, {"grupo": "K", "team_a": "Portugal", "score_a": 3, "score_b": 2, "team_b": "Colômbia"}, {"grupo": "K", "team_a": "Rep. D. Congo", "score_a": 0, "score_b": 0, "team_b": "Uzbequistão"}, {"grupo": "K", "team_a": "Rep. D. Congo", "score_a": 1, "score_b": 2, "team_b": "Colômbia"}, {"grupo": "K", "team_a": "Uzbequistão", "score_a": 0, "score_b": 1, "team_b": "Colômbia"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 1, "score_b": 1, "team_b": "Croácia"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 2, "score_b": 0, "team_b": "Gana"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 5, "score_b": 0, "team_b": "Panamá"}, {"grupo": "L", "team_a": "Croácia", "score_a": 2, "score_b": 2, "team_b": "Gana"}, {"grupo": "L", "team_a": "Croácia", "score_a": 2, "score_b": 0, "team_b": "Panamá"}, {"grupo": "L", "team_a": "Gana", "score_a": 1, "score_b": 0, "team_b": "Panamá"}]}, {"name": "Gabriel Lozano", "matches": [{"grupo": "A", "team_a": "México", "score_a": 1, "score_b": 1, "team_b": "África do Sul"}, {"grupo": "A", "team_a": "México", "score_a": 0, "score_b": 2, "team_b": "Coreia do Sul"}, {"grupo": "A", "team_a": "México", "score_a": 1, "score_b": 1, "team_b": "República Tcheca"}, {"grupo": "A", "team_a": "África do Sul", "score_a": 1, "score_b": 2, "team_b": "Coreia do Sul"}, {"grupo": "A", "team_a": "África do Sul", "score_a": 2, "score_b": 1, "team_b": "República Tcheca"}, {"grupo": "A", "team_a": "Coreia do Sul", "score_a": 3, "score_b": 1, "team_b": "República Tcheca"}, {"grupo": "B", "team_a": "Canadá", "score_a": 2, "score_b": 0, "team_b": "Bósnia e Herzegovina"}, {"grupo": "B", "team_a": "Canadá", "score_a": 2, "score_b": 1, "team_b": "Catar"}, {"grupo": "B", "team_a": "Canadá", "score_a": 1, "score_b": 1, "team_b": "Suíça"}, {"grupo": "B", "team_a": "Bósnia e Herzegovina", "score_a": 1, "score_b": 1, "team_b": "Catar"}, {"grupo": "B", "team_a": "Bósnia e Herzegovina", "score_a": 1, "score_b": 3, "team_b": "Suíça"}, {"grupo": "B", "team_a": "Catar", "score_a": 1, "score_b": 2, "team_b": "Suíça"}, {"grupo": "C", "team_a": "Brasil", "score_a": 2, "score_b": 1, "team_b": "Marrocos"}, {"grupo": "C", "team_a": "Brasil", "score_a": 3, "score_b": 0, "team_b": "Haiti"}, {"grupo": "C", "team_a": "Brasil", "score_a": 3, "score_b": 1, "team_b": "Escócia"}, {"grupo": "C", "team_a": "Marrocos", "score_a": 2, "score_b": 0, "team_b": "Haiti"}, {"grupo": "C", "team_a": "Marrocos", "score_a": 3, "score_b": 1, "team_b": "Escócia"}, {"grupo": "C", "team_a": "Haiti", "score_a": 1, "score_b": 1, "team_b": "Escócia"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 2, "score_b": 2, "team_b": "Paraguai"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 2, "score_b": 1, "team_b": "Austrália"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 1, "score_b": 2, "team_b": "Turquia"}, {"grupo": "D", "team_a": "Paraguai", "score_a": 1, "score_b": 1, "team_b": "Austrália"}, {"grupo": "D", "team_a": "Paraguai", "score_a": 2, "score_b": 2, "team_b": "Turquia"}, {"grupo": "D", "team_a": "Austrália", "score_a": 2, "score_b": 0, "team_b": "Turquia"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 4, "score_b": 0, "team_b": "Curaçao"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 2, "score_b": 2, "team_b": "Costa do Marfim"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 2, "score_b": 0, "team_b": "Equador"}, {"grupo": "E", "team_a": "Curaçao", "score_a": 0, "score_b": 3, "team_b": "Costa do Marfim"}, {"grupo": "E", "team_a": "Curaçao", "score_a": 1, "score_b": 2, "team_b": "Equador"}, {"grupo": "E", "team_a": "Costa do Marfim", "score_a": 2, "score_b": 0, "team_b": "Equador"}, {"grupo": "F", "team_a": "Holanda", "score_a": 2, "score_b": 2, "team_b": "Japão"}, {"grupo": "F", "team_a": "Holanda", "score_a": 2, "score_b": 1, "team_b": "Suécia"}, {"grupo": "F", "team_a": "Holanda", "score_a": 3, "score_b": 0, "team_b": "Tunísia"}, {"grupo": "F", "team_a": "Japão", "score_a": 2, "score_b": 1, "team_b": "Suécia"}, {"grupo": "F", "team_a": "Japão", "score_a": 2, "score_b": 0, "team_b": "Tunísia"}, {"grupo": "F", "team_a": "Suécia", "score_a": 2, "score_b": 1, "team_b": "Tunísia"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 2, "score_b": 1, "team_b": "Egito"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 2, "score_b": 0, "team_b": "Irã"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 2, "score_b": 1, "team_b": "Nova Zelândia"}, {"grupo": "G", "team_a": "Egito", "score_a": 2, "score_b": 1, "team_b": "Irã"}, {"grupo": "G", "team_a": "Egito", "score_a": 2, "score_b": 1, "team_b": "Nova Zelândia"}, {"grupo": "G", "team_a": "Irã", "score_a": 1, "score_b": 1, "team_b": "Nova Zelândia"}, {"grupo": "H", "team_a": "Espanha", "score_a": 4, "score_b": 0, "team_b": "Cabo Verde"}, {"grupo": "H", "team_a": "Espanha", "score_a": 3, "score_b": 1, "team_b": "Arábia Saudita"}, {"grupo": "H", "team_a": "Espanha", "score_a": 2, "score_b": 0, "team_b": "Uruguai"}, {"grupo": "H", "team_a": "Cabo Verde", "score_a": 1, "score_b": 3, "team_b": "Arábia Saudita"}, {"grupo": "H", "team_a": "Cabo Verde", "score_a": 0, "score_b": 2, "team_b": "Uruguai"}, {"grupo": "H", "team_a": "Arábia Saudita", "score_a": 2, "score_b": 2, "team_b": "Uruguai"}, {"grupo": "I", "team_a": "França", "score_a": 4, "score_b": 0, "team_b": "Senegal"}, {"grupo": "I", "team_a": "França", "score_a": 3, "score_b": 0, "team_b": "Iraque"}, {"grupo": "I", "team_a": "França", "score_a": 3, "score_b": 1, "team_b": "Noruega"}, {"grupo": "I", "team_a": "Senegal", "score_a": 2, "score_b": 1, "team_b": "Iraque"}, {"grupo": "I", "team_a": "Senegal", "score_a": 1, "score_b": 3, "team_b": "Noruega"}, {"grupo": "I", "team_a": "Iraque", "score_a": 0, "score_b": 2, "team_b": "Noruega"}, {"grupo": "J", "team_a": "Argentina", "score_a": 3, "score_b": 1, "team_b": "Argélia"}, {"grupo": "J", "team_a": "Argentina", "score_a": 2, "score_b": 0, "team_b": "Áustria"}, {"grupo": "J", "team_a": "Argentina", "score_a": 4, "score_b": 0, "team_b": "Jordânia"}, {"grupo": "J", "team_a": "Argélia", "score_a": 1, "score_b": 2, "team_b": "Áustria"}, {"grupo": "J", "team_a": "Argélia", "score_a": 2, "score_b": 0, "team_b": "Jordânia"}, {"grupo": "J", "team_a": "Áustria", "score_a": 1, "score_b": 0, "team_b": "Jordânia"}, {"grupo": "K", "team_a": "Portugal", "score_a": 3, "score_b": 0, "team_b": "Rep. D. Congo"}, {"grupo": "K", "team_a": "Portugal", "score_a": 2, "score_b": 0, "team_b": "Uzbequistão"}, {"grupo": "K", "team_a": "Portugal", "score_a": 3, "score_b": 2, "team_b": "Colômbia"}, {"grupo": "K", "team_a": "Rep. D. Congo", "score_a": 1, "score_b": 1, "team_b": "Uzbequistão"}, {"grupo": "K", "team_a": "Rep. D. Congo", "score_a": 0, "score_b": 2, "team_b": "Colômbia"}, {"grupo": "K", "team_a": "Uzbequistão", "score_a": 0, "score_b": 2, "team_b": "Colômbia"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 2, "score_b": 1, "team_b": "Croácia"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 2, "score_b": 0, "team_b": "Gana"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 2, "score_b": 1, "team_b": "Panamá"}, {"grupo": "L", "team_a": "Croácia", "score_a": 2, "score_b": 1, "team_b": "Gana"}, {"grupo": "L", "team_a": "Croácia", "score_a": 2, "score_b": 1, "team_b": "Panamá"}, {"grupo": "L", "team_a": "Gana", "score_a": 1, "score_b": 1, "team_b": "Panamá"}]}, {"name": "Bento", "matches": [{"grupo": "A", "team_a": "México", "score_a": 2, "score_b": 0, "team_b": "África do Sul"}, {"grupo": "A", "team_a": "México", "score_a": 1, "score_b": 1, "team_b": "Coreia do Sul"}, {"grupo": "A", "team_a": "México", "score_a": 3, "score_b": 1, "team_b": "República Tcheca"}, {"grupo": "A", "team_a": "África do Sul", "score_a": 1, "score_b": 2, "team_b": "Coreia do Sul"}, {"grupo": "A", "team_a": "África do Sul", "score_a": 2, "score_b": 2, "team_b": "República Tcheca"}, {"grupo": "A", "team_a": "Coreia do Sul", "score_a": 2, "score_b": 0, "team_b": "República Tcheca"}, {"grupo": "B", "team_a": "Canadá", "score_a": 2, "score_b": 0, "team_b": "Bósnia e Herzegovina"}, {"grupo": "B", "team_a": "Canadá", "score_a": 3, "score_b": 1, "team_b": "Catar"}, {"grupo": "B", "team_a": "Canadá", "score_a": 1, "score_b": 2, "team_b": "Suíça"}, {"grupo": "B", "team_a": "Bósnia e Herzegovina", "score_a": 2, "score_b": 1, "team_b": "Catar"}, {"grupo": "B", "team_a": "Bósnia e Herzegovina", "score_a": 1, "score_b": 3, "team_b": "Suíça"}, {"grupo": "B", "team_a": "Catar", "score_a": 0, "score_b": 3, "team_b": "Suíça"}, {"grupo": "C", "team_a": "Brasil", "score_a": 1, "score_b": 0, "team_b": "Marrocos"}, {"grupo": "C", "team_a": "Brasil", "score_a": 4, "score_b": 0, "team_b": "Haiti"}, {"grupo": "C", "team_a": "Brasil", "score_a": 3, "score_b": 1, "team_b": "Escócia"}, {"grupo": "C", "team_a": "Marrocos", "score_a": 2, "score_b": 0, "team_b": "Haiti"}, {"grupo": "C", "team_a": "Marrocos", "score_a": 2, "score_b": 1, "team_b": "Escócia"}, {"grupo": "C", "team_a": "Haiti", "score_a": 0, "score_b": 1, "team_b": "Escócia"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 2, "score_b": 1, "team_b": "Paraguai"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 1, "score_b": 1, "team_b": "Austrália"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 1, "score_b": 0, "team_b": "Turquia"}, {"grupo": "D", "team_a": "Paraguai", "score_a": 1, "score_b": 0, "team_b": "Austrália"}, {"grupo": "D", "team_a": "Paraguai", "score_a": 2, "score_b": 1, "team_b": "Turquia"}, {"grupo": "D", "team_a": "Austrália", "score_a": 1, "score_b": 0, "team_b": "Turquia"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 4, "score_b": 0, "team_b": "Curaçao"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 2, "score_b": 0, "team_b": "Costa do Marfim"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 4, "score_b": 1, "team_b": "Equador"}, {"grupo": "E", "team_a": "Curaçao", "score_a": 1, "score_b": 2, "team_b": "Costa do Marfim"}, {"grupo": "E", "team_a": "Curaçao", "score_a": 0, "score_b": 2, "team_b": "Equador"}, {"grupo": "E", "team_a": "Costa do Marfim", "score_a": 1, "score_b": 1, "team_b": "Equador"}, {"grupo": "F", "team_a": "Holanda", "score_a": 1, "score_b": 1, "team_b": "Japão"}, {"grupo": "F", "team_a": "Holanda", "score_a": 2, "score_b": 1, "team_b": "Suécia"}, {"grupo": "F", "team_a": "Holanda", "score_a": 2, "score_b": 0, "team_b": "Tunísia"}, {"grupo": "F", "team_a": "Japão", "score_a": 2, "score_b": 1, "team_b": "Suécia"}, {"grupo": "F", "team_a": "Japão", "score_a": 2, "score_b": 0, "team_b": "Tunísia"}, {"grupo": "F", "team_a": "Suécia", "score_a": 2, "score_b": 0, "team_b": "Tunísia"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 2, "score_b": 0, "team_b": "Egito"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 3, "score_b": 1, "team_b": "Irã"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 2, "score_b": 1, "team_b": "Nova Zelândia"}, {"grupo": "G", "team_a": "Egito", "score_a": 1, "score_b": 0, "team_b": "Irã"}, {"grupo": "G", "team_a": "Egito", "score_a": 1, "score_b": 2, "team_b": "Nova Zelândia"}, {"grupo": "G", "team_a": "Irã", "score_a": 2, "score_b": 2, "team_b": "Nova Zelândia"}, {"grupo": "H", "team_a": "Espanha", "score_a": 3, "score_b": 0, "team_b": "Cabo Verde"}, {"grupo": "H", "team_a": "Espanha", "score_a": 4, "score_b": 1, "team_b": "Arábia Saudita"}, {"grupo": "H", "team_a": "Espanha", "score_a": 2, "score_b": 1, "team_b": "Uruguai"}, {"grupo": "H", "team_a": "Cabo Verde", "score_a": 2, "score_b": 3, "team_b": "Arábia Saudita"}, {"grupo": "H", "team_a": "Cabo Verde", "score_a": 1, "score_b": 3, "team_b": "Uruguai"}, {"grupo": "H", "team_a": "Arábia Saudita", "score_a": 0, "score_b": 2, "team_b": "Uruguai"}, {"grupo": "I", "team_a": "França", "score_a": 3, "score_b": 0, "team_b": "Senegal"}, {"grupo": "I", "team_a": "França", "score_a": 4, "score_b": 0, "team_b": "Iraque"}, {"grupo": "I", "team_a": "França", "score_a": 3, "score_b": 1, "team_b": "Noruega"}, {"grupo": "I", "team_a": "Senegal", "score_a": 2, "score_b": 1, "team_b": "Iraque"}, {"grupo": "I", "team_a": "Senegal", "score_a": 3, "score_b": 2, "team_b": "Noruega"}, {"grupo": "I", "team_a": "Iraque", "score_a": 0, "score_b": 2, "team_b": "Noruega"}, {"grupo": "J", "team_a": "Argentina", "score_a": 2, "score_b": 0, "team_b": "Argélia"}, {"grupo": "J", "team_a": "Argentina", "score_a": 2, "score_b": 1, "team_b": "Áustria"}, {"grupo": "J", "team_a": "Argentina", "score_a": 3, "score_b": 1, "team_b": "Jordânia"}, {"grupo": "J", "team_a": "Argélia", "score_a": 0, "score_b": 2, "team_b": "Áustria"}, {"grupo": "J", "team_a": "Argélia", "score_a": 2, "score_b": 1, "team_b": "Jordânia"}, {"grupo": "J", "team_a": "Áustria", "score_a": 1, "score_b": 0, "team_b": "Jordânia"}, {"grupo": "K", "team_a": "Portugal", "score_a": 3, "score_b": 1, "team_b": "Rep. D. Congo"}, {"grupo": "K", "team_a": "Portugal", "score_a": 3, "score_b": 0, "team_b": "Uzbequistão"}, {"grupo": "K", "team_a": "Portugal", "score_a": 1, "score_b": 2, "team_b": "Colômbia"}, {"grupo": "K", "team_a": "Rep. D. Congo", "score_a": 3, "score_b": 2, "team_b": "Uzbequistão"}, {"grupo": "K", "team_a": "Rep. D. Congo", "score_a": 1, "score_b": 3, "team_b": "Colômbia"}, {"grupo": "K", "team_a": "Uzbequistão", "score_a": 0, "score_b": 2, "team_b": "Colômbia"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 2, "score_b": 1, "team_b": "Croácia"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 2, "score_b": 0, "team_b": "Gana"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 3, "score_b": 0, "team_b": "Panamá"}, {"grupo": "L", "team_a": "Croácia", "score_a": 2, "score_b": 1, "team_b": "Gana"}, {"grupo": "L", "team_a": "Croácia", "score_a": 2, "score_b": 1, "team_b": "Panamá"}, {"grupo": "L", "team_a": "Gana", "score_a": 2, "score_b": 2, "team_b": "Panamá"}]}, {"name": "Luiz Tabith", "matches": [{"grupo": "A", "team_a": "México", "score_a": 2, "score_b": 1, "team_b": "África do Sul"}, {"grupo": "A", "team_a": "México", "score_a": 1, "score_b": 2, "team_b": "Coreia do Sul"}, {"grupo": "A", "team_a": "México", "score_a": 3, "score_b": 0, "team_b": "República Tcheca"}, {"grupo": "A", "team_a": "África do Sul", "score_a": 0, "score_b": 2, "team_b": "Coreia do Sul"}, {"grupo": "A", "team_a": "África do Sul", "score_a": 0, "score_b": 0, "team_b": "República Tcheca"}, {"grupo": "A", "team_a": "Coreia do Sul", "score_a": 3, "score_b": 0, "team_b": "República Tcheca"}, {"grupo": "B", "team_a": "Canadá", "score_a": 0, "score_b": 1, "team_b": "Bósnia e Herzegovina"}, {"grupo": "B", "team_a": "Canadá", "score_a": 1, "score_b": 1, "team_b": "Catar"}, {"grupo": "B", "team_a": "Canadá", "score_a": 0, "score_b": 4, "team_b": "Suíça"}, {"grupo": "B", "team_a": "Bósnia e Herzegovina", "score_a": 2, "score_b": 1, "team_b": "Catar"}, {"grupo": "B", "team_a": "Bósnia e Herzegovina", "score_a": 1, "score_b": 3, "team_b": "Suíça"}, {"grupo": "B", "team_a": "Catar", "score_a": 1, "score_b": 2, "team_b": "Suíça"}, {"grupo": "C", "team_a": "Brasil", "score_a": 2, "score_b": 1, "team_b": "Marrocos"}, {"grupo": "C", "team_a": "Brasil", "score_a": 5, "score_b": 0, "team_b": "Haiti"}, {"grupo": "C", "team_a": "Brasil", "score_a": 3, "score_b": 2, "team_b": "Escócia"}, {"grupo": "C", "team_a": "Marrocos", "score_a": 3, "score_b": 0, "team_b": "Haiti"}, {"grupo": "C", "team_a": "Marrocos", "score_a": 3, "score_b": 1, "team_b": "Escócia"}, {"grupo": "C", "team_a": "Haiti", "score_a": 0, "score_b": 2, "team_b": "Escócia"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 2, "score_b": 2, "team_b": "Paraguai"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 2, "score_b": 1, "team_b": "Austrália"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 1, "score_b": 2, "team_b": "Turquia"}, {"grupo": "D", "team_a": "Paraguai", "score_a": 2, "score_b": 1, "team_b": "Austrália"}, {"grupo": "D", "team_a": "Paraguai", "score_a": 0, "score_b": 1, "team_b": "Turquia"}, {"grupo": "D", "team_a": "Austrália", "score_a": 0, "score_b": 2, "team_b": "Turquia"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 4, "score_b": 0, "team_b": "Curaçao"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 2, "score_b": 0, "team_b": "Costa do Marfim"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 3, "score_b": 1, "team_b": "Equador"}, {"grupo": "E", "team_a": "Curaçao", "score_a": 2, "score_b": 1, "team_b": "Costa do Marfim"}, {"grupo": "E", "team_a": "Curaçao", "score_a": 0, "score_b": 2, "team_b": "Equador"}, {"grupo": "E", "team_a": "Costa do Marfim", "score_a": 0, "score_b": 1, "team_b": "Equador"}, {"grupo": "F", "team_a": "Holanda", "score_a": 1, "score_b": 2, "team_b": "Japão"}, {"grupo": "F", "team_a": "Holanda", "score_a": 1, "score_b": 1, "team_b": "Suécia"}, {"grupo": "F", "team_a": "Holanda", "score_a": 1, "score_b": 0, "team_b": "Tunísia"}, {"grupo": "F", "team_a": "Japão", "score_a": 2, "score_b": 1, "team_b": "Suécia"}, {"grupo": "F", "team_a": "Japão", "score_a": 1, "score_b": 0, "team_b": "Tunísia"}, {"grupo": "F", "team_a": "Suécia", "score_a": 2, "score_b": 0, "team_b": "Tunísia"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 2, "score_b": 1, "team_b": "Egito"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 1, "score_b": 0, "team_b": "Irã"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 2, "score_b": 0, "team_b": "Nova Zelândia"}, {"grupo": "G", "team_a": "Egito", "score_a": 1, "score_b": 1, "team_b": "Irã"}, {"grupo": "G", "team_a": "Egito", "score_a": 2, "score_b": 0, "team_b": "Nova Zelândia"}, {"grupo": "G", "team_a": "Irã", "score_a": 1, "score_b": 0, "team_b": "Nova Zelândia"}, {"grupo": "H", "team_a": "Espanha", "score_a": 5, "score_b": 0, "team_b": "Cabo Verde"}, {"grupo": "H", "team_a": "Espanha", "score_a": 2, "score_b": 0, "team_b": "Arábia Saudita"}, {"grupo": "H", "team_a": "Espanha", "score_a": 2, "score_b": 1, "team_b": "Uruguai"}, {"grupo": "H", "team_a": "Cabo Verde", "score_a": 0, "score_b": 3, "team_b": "Arábia Saudita"}, {"grupo": "H", "team_a": "Cabo Verde", "score_a": 0, "score_b": 2, "team_b": "Uruguai"}, {"grupo": "H", "team_a": "Arábia Saudita", "score_a": 1, "score_b": 2, "team_b": "Uruguai"}, {"grupo": "I", "team_a": "França", "score_a": 4, "score_b": 1, "team_b": "Senegal"}, {"grupo": "I", "team_a": "França", "score_a": 4, "score_b": 0, "team_b": "Iraque"}, {"grupo": "I", "team_a": "França", "score_a": 3, "score_b": 2, "team_b": "Noruega"}, {"grupo": "I", "team_a": "Senegal", "score_a": 0, "score_b": 2, "team_b": "Iraque"}, {"grupo": "I", "team_a": "Senegal", "score_a": 1, "score_b": 1, "team_b": "Noruega"}, {"grupo": "I", "team_a": "Iraque", "score_a": 0, "score_b": 0, "team_b": "Noruega"}, {"grupo": "J", "team_a": "Argentina", "score_a": 1, "score_b": 2, "team_b": "Argélia"}, {"grupo": "J", "team_a": "Argentina", "score_a": 3, "score_b": 1, "team_b": "Áustria"}, {"grupo": "J", "team_a": "Argentina", "score_a": 6, "score_b": 0, "team_b": "Jordânia"}, {"grupo": "J", "team_a": "Argélia", "score_a": 2, "score_b": 2, "team_b": "Áustria"}, {"grupo": "J", "team_a": "Argélia", "score_a": 2, "score_b": 1, "team_b": "Jordânia"}, {"grupo": "J", "team_a": "Áustria", "score_a": 3, "score_b": 0, "team_b": "Jordânia"}, {"grupo": "K", "team_a": "Portugal", "score_a": 2, "score_b": 1, "team_b": "Rep. D. Congo"}, {"grupo": "K", "team_a": "Portugal", "score_a": 3, "score_b": 0, "team_b": "Uzbequistão"}, {"grupo": "K", "team_a": "Portugal", "score_a": 1, "score_b": 2, "team_b": "Colômbia"}, {"grupo": "K", "team_a": "Rep. D. Congo", "score_a": 2, "score_b": 0, "team_b": "Uzbequistão"}, {"grupo": "K", "team_a": "Rep. D. Congo", "score_a": 1, "score_b": 1, "team_b": "Colômbia"}, {"grupo": "K", "team_a": "Uzbequistão", "score_a": 0, "score_b": 2, "team_b": "Colômbia"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 1, "score_b": 2, "team_b": "Croácia"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 1, "score_b": 0, "team_b": "Gana"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 2, "score_b": 0, "team_b": "Panamá"}, {"grupo": "L", "team_a": "Croácia", "score_a": 2, "score_b": 0, "team_b": "Gana"}, {"grupo": "L", "team_a": "Croácia", "score_a": 3, "score_b": 0, "team_b": "Panamá"}, {"grupo": "L", "team_a": "Gana", "score_a": 1, "score_b": 1, "team_b": "Panamá"}]}, {"name": "Pedro Canaves", "matches": [{"grupo": "A", "team_a": "México", "score_a": 1, "score_b": 0, "team_b": "África do Sul"}, {"grupo": "A", "team_a": "México", "score_a": 1, "score_b": 1, "team_b": "Coreia do Sul"}, {"grupo": "A", "team_a": "México", "score_a": 1, "score_b": 1, "team_b": "República Tcheca"}, {"grupo": "A", "team_a": "África do Sul", "score_a": 0, "score_b": 2, "team_b": "Coreia do Sul"}, {"grupo": "A", "team_a": "África do Sul", "score_a": 1, "score_b": 2, "team_b": "República Tcheca"}, {"grupo": "A", "team_a": "Coreia do Sul", "score_a": 1, "score_b": 1, "team_b": "República Tcheca"}, {"grupo": "B", "team_a": "Canadá", "score_a": 1, "score_b": 1, "team_b": "Bósnia e Herzegovina"}, {"grupo": "B", "team_a": "Canadá", "score_a": 2, "score_b": 0, "team_b": "Catar"}, {"grupo": "B", "team_a": "Canadá", "score_a": 1, "score_b": 2, "team_b": "Suíça"}, {"grupo": "B", "team_a": "Bósnia e Herzegovina", "score_a": 1, "score_b": 0, "team_b": "Catar"}, {"grupo": "B", "team_a": "Bósnia e Herzegovina", "score_a": 1, "score_b": 2, "team_b": "Suíça"}, {"grupo": "B", "team_a": "Catar", "score_a": 1, "score_b": 3, "team_b": "Suíça"}, {"grupo": "C", "team_a": "Brasil", "score_a": 2, "score_b": 1, "team_b": "Marrocos"}, {"grupo": "C", "team_a": "Brasil", "score_a": 3, "score_b": 0, "team_b": "Haiti"}, {"grupo": "C", "team_a": "Brasil", "score_a": 2, "score_b": 1, "team_b": "Escócia"}, {"grupo": "C", "team_a": "Marrocos", "score_a": 2, "score_b": 0, "team_b": "Haiti"}, {"grupo": "C", "team_a": "Marrocos", "score_a": 2, "score_b": 1, "team_b": "Escócia"}, {"grupo": "C", "team_a": "Haiti", "score_a": 0, "score_b": 2, "team_b": "Escócia"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 1, "score_b": 1, "team_b": "Paraguai"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 2, "score_b": 0, "team_b": "Austrália"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 1, "score_b": 2, "team_b": "Turquia"}, {"grupo": "D", "team_a": "Paraguai", "score_a": 1, "score_b": 0, "team_b": "Austrália"}, {"grupo": "D", "team_a": "Paraguai", "score_a": 0, "score_b": 2, "team_b": "Turquia"}, {"grupo": "D", "team_a": "Austrália", "score_a": 0, "score_b": 2, "team_b": "Turquia"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 5, "score_b": 0, "team_b": "Curaçao"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 2, "score_b": 0, "team_b": "Costa do Marfim"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 3, "score_b": 1, "team_b": "Equador"}, {"grupo": "E", "team_a": "Curaçao", "score_a": 0, "score_b": 3, "team_b": "Costa do Marfim"}, {"grupo": "E", "team_a": "Curaçao", "score_a": 0, "score_b": 2, "team_b": "Equador"}, {"grupo": "E", "team_a": "Costa do Marfim", "score_a": 1, "score_b": 1, "team_b": "Equador"}, {"grupo": "F", "team_a": "Holanda", "score_a": 1, "score_b": 1, "team_b": "Japão"}, {"grupo": "F", "team_a": "Holanda", "score_a": 2, "score_b": 1, "team_b": "Suécia"}, {"grupo": "F", "team_a": "Holanda", "score_a": 2, "score_b": 0, "team_b": "Tunísia"}, {"grupo": "F", "team_a": "Japão", "score_a": 1, "score_b": 0, "team_b": "Suécia"}, {"grupo": "F", "team_a": "Japão", "score_a": 2, "score_b": 0, "team_b": "Tunísia"}, {"grupo": "F", "team_a": "Suécia", "score_a": 2, "score_b": 1, "team_b": "Tunísia"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 2, "score_b": 1, "team_b": "Egito"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 2, "score_b": 1, "team_b": "Irã"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 3, "score_b": 0, "team_b": "Nova Zelândia"}, {"grupo": "G", "team_a": "Egito", "score_a": 2, "score_b": 1, "team_b": "Irã"}, {"grupo": "G", "team_a": "Egito", "score_a": 2, "score_b": 0, "team_b": "Nova Zelândia"}, {"grupo": "G", "team_a": "Irã", "score_a": 2, "score_b": 1, "team_b": "Nova Zelândia"}, {"grupo": "H", "team_a": "Espanha", "score_a": 5, "score_b": 0, "team_b": "Cabo Verde"}, {"grupo": "H", "team_a": "Espanha", "score_a": 4, "score_b": 0, "team_b": "Arábia Saudita"}, {"grupo": "H", "team_a": "Espanha", "score_a": 3, "score_b": 1, "team_b": "Uruguai"}, {"grupo": "H", "team_a": "Cabo Verde", "score_a": 0, "score_b": 1, "team_b": "Arábia Saudita"}, {"grupo": "H", "team_a": "Cabo Verde", "score_a": 0, "score_b": 3, "team_b": "Uruguai"}, {"grupo": "H", "team_a": "Arábia Saudita", "score_a": 1, "score_b": 2, "team_b": "Uruguai"}, {"grupo": "I", "team_a": "França", "score_a": 3, "score_b": 1, "team_b": "Senegal"}, {"grupo": "I", "team_a": "França", "score_a": 4, "score_b": 0, "team_b": "Iraque"}, {"grupo": "I", "team_a": "França", "score_a": 3, "score_b": 1, "team_b": "Noruega"}, {"grupo": "I", "team_a": "Senegal", "score_a": 2, "score_b": 0, "team_b": "Iraque"}, {"grupo": "I", "team_a": "Senegal", "score_a": 2, "score_b": 2, "team_b": "Noruega"}, {"grupo": "I", "team_a": "Iraque", "score_a": 0, "score_b": 2, "team_b": "Noruega"}, {"grupo": "J", "team_a": "Argentina", "score_a": 2, "score_b": 0, "team_b": "Argélia"}, {"grupo": "J", "team_a": "Argentina", "score_a": 2, "score_b": 1, "team_b": "Áustria"}, {"grupo": "J", "team_a": "Argentina", "score_a": 3, "score_b": 0, "team_b": "Jordânia"}, {"grupo": "J", "team_a": "Argélia", "score_a": 1, "score_b": 2, "team_b": "Áustria"}, {"grupo": "J", "team_a": "Argélia", "score_a": 2, "score_b": 1, "team_b": "Jordânia"}, {"grupo": "J", "team_a": "Áustria", "score_a": 2, "score_b": 0, "team_b": "Jordânia"}, {"grupo": "K", "team_a": "Portugal", "score_a": 3, "score_b": 0, "team_b": "Rep. D. Congo"}, {"grupo": "K", "team_a": "Portugal", "score_a": 2, "score_b": 1, "team_b": "Uzbequistão"}, {"grupo": "K", "team_a": "Portugal", "score_a": 2, "score_b": 2, "team_b": "Colômbia"}, {"grupo": "K", "team_a": "Rep. D. Congo", "score_a": 1, "score_b": 1, "team_b": "Uzbequistão"}, {"grupo": "K", "team_a": "Rep. D. Congo", "score_a": 1, "score_b": 2, "team_b": "Colômbia"}, {"grupo": "K", "team_a": "Uzbequistão", "score_a": 1, "score_b": 2, "team_b": "Colômbia"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 2, "score_b": 1, "team_b": "Croácia"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 2, "score_b": 1, "team_b": "Gana"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 3, "score_b": 0, "team_b": "Panamá"}, {"grupo": "L", "team_a": "Croácia", "score_a": 2, "score_b": 1, "team_b": "Gana"}, {"grupo": "L", "team_a": "Croácia", "score_a": 2, "score_b": 0, "team_b": "Panamá"}, {"grupo": "L", "team_a": "Gana", "score_a": 2, "score_b": 0, "team_b": "Panamá"}]}, {"name": "Luiz Balestero", "matches": [{"grupo": "A", "team_a": "México", "score_a": 2, "score_b": 0, "team_b": "África do Sul"}, {"grupo": "A", "team_a": "México", "score_a": 1, "score_b": 1, "team_b": "Coreia do Sul"}, {"grupo": "A", "team_a": "México", "score_a": 2, "score_b": 1, "team_b": "República Tcheca"}, {"grupo": "A", "team_a": "África do Sul", "score_a": 1, "score_b": 1, "team_b": "Coreia do Sul"}, {"grupo": "A", "team_a": "África do Sul", "score_a": 1, "score_b": 0, "team_b": "República Tcheca"}, {"grupo": "A", "team_a": "Coreia do Sul", "score_a": 1, "score_b": 0, "team_b": "República Tcheca"}, {"grupo": "B", "team_a": "Canadá", "score_a": 1, "score_b": 1, "team_b": "Bósnia e Herzegovina"}, {"grupo": "B", "team_a": "Canadá", "score_a": 2, "score_b": 0, "team_b": "Catar"}, {"grupo": "B", "team_a": "Canadá", "score_a": 1, "score_b": 2, "team_b": "Suíça"}, {"grupo": "B", "team_a": "Bósnia e Herzegovina", "score_a": 1, "score_b": 0, "team_b": "Catar"}, {"grupo": "B", "team_a": "Bósnia e Herzegovina", "score_a": 1, "score_b": 3, "team_b": "Suíça"}, {"grupo": "B", "team_a": "Catar", "score_a": 0, "score_b": 3, "team_b": "Suíça"}, {"grupo": "C", "team_a": "Brasil", "score_a": 1, "score_b": 1, "team_b": "Marrocos"}, {"grupo": "C", "team_a": "Brasil", "score_a": 4, "score_b": 0, "team_b": "Haiti"}, {"grupo": "C", "team_a": "Brasil", "score_a": 2, "score_b": 0, "team_b": "Escócia"}, {"grupo": "C", "team_a": "Marrocos", "score_a": 2, "score_b": 0, "team_b": "Haiti"}, {"grupo": "C", "team_a": "Marrocos", "score_a": 1, "score_b": 0, "team_b": "Escócia"}, {"grupo": "C", "team_a": "Haiti", "score_a": 1, "score_b": 2, "team_b": "Escócia"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 2, "score_b": 1, "team_b": "Paraguai"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 1, "score_b": 1, "team_b": "Austrália"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 0, "score_b": 3, "team_b": "Turquia"}, {"grupo": "D", "team_a": "Paraguai", "score_a": 2, "score_b": 0, "team_b": "Austrália"}, {"grupo": "D", "team_a": "Paraguai", "score_a": 1, "score_b": 2, "team_b": "Turquia"}, {"grupo": "D", "team_a": "Austrália", "score_a": 0, "score_b": 4, "team_b": "Turquia"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 3, "score_b": 0, "team_b": "Curaçao"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 1, "score_b": 0, "team_b": "Costa do Marfim"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 2, "score_b": 1, "team_b": "Equador"}, {"grupo": "E", "team_a": "Curaçao", "score_a": 0, "score_b": 0, "team_b": "Costa do Marfim"}, {"grupo": "E", "team_a": "Curaçao", "score_a": 0, "score_b": 0, "team_b": "Equador"}, {"grupo": "E", "team_a": "Costa do Marfim", "score_a": 1, "score_b": 1, "team_b": "Equador"}, {"grupo": "F", "team_a": "Holanda", "score_a": 2, "score_b": 1, "team_b": "Japão"}, {"grupo": "F", "team_a": "Holanda", "score_a": 2, "score_b": 0, "team_b": "Suécia"}, {"grupo": "F", "team_a": "Holanda", "score_a": 2, "score_b": 1, "team_b": "Tunísia"}, {"grupo": "F", "team_a": "Japão", "score_a": 2, "score_b": 1, "team_b": "Suécia"}, {"grupo": "F", "team_a": "Japão", "score_a": 1, "score_b": 0, "team_b": "Tunísia"}, {"grupo": "F", "team_a": "Suécia", "score_a": 2, "score_b": 1, "team_b": "Tunísia"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 1, "score_b": 1, "team_b": "Egito"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 2, "score_b": 0, "team_b": "Irã"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 3, "score_b": 0, "team_b": "Nova Zelândia"}, {"grupo": "G", "team_a": "Egito", "score_a": 1, "score_b": 0, "team_b": "Irã"}, {"grupo": "G", "team_a": "Egito", "score_a": 2, "score_b": 0, "team_b": "Nova Zelândia"}, {"grupo": "G", "team_a": "Irã", "score_a": 2, "score_b": 0, "team_b": "Nova Zelândia"}, {"grupo": "H", "team_a": "Espanha", "score_a": 4, "score_b": 0, "team_b": "Cabo Verde"}, {"grupo": "H", "team_a": "Espanha", "score_a": 3, "score_b": 1, "team_b": "Arábia Saudita"}, {"grupo": "H", "team_a": "Espanha", "score_a": 1, "score_b": 1, "team_b": "Uruguai"}, {"grupo": "H", "team_a": "Cabo Verde", "score_a": 1, "score_b": 2, "team_b": "Arábia Saudita"}, {"grupo": "H", "team_a": "Cabo Verde", "score_a": 0, "score_b": 2, "team_b": "Uruguai"}, {"grupo": "H", "team_a": "Arábia Saudita", "score_a": 1, "score_b": 2, "team_b": "Uruguai"}, {"grupo": "I", "team_a": "França", "score_a": 1, "score_b": 1, "team_b": "Senegal"}, {"grupo": "I", "team_a": "França", "score_a": 5, "score_b": 0, "team_b": "Iraque"}, {"grupo": "I", "team_a": "França", "score_a": 2, "score_b": 1, "team_b": "Noruega"}, {"grupo": "I", "team_a": "Senegal", "score_a": 2, "score_b": 1, "team_b": "Iraque"}, {"grupo": "I", "team_a": "Senegal", "score_a": 1, "score_b": 2, "team_b": "Noruega"}, {"grupo": "I", "team_a": "Iraque", "score_a": 0, "score_b": 3, "team_b": "Noruega"}, {"grupo": "J", "team_a": "Argentina", "score_a": 2, "score_b": 0, "team_b": "Argélia"}, {"grupo": "J", "team_a": "Argentina", "score_a": 2, "score_b": 0, "team_b": "Áustria"}, {"grupo": "J", "team_a": "Argentina", "score_a": 4, "score_b": 0, "team_b": "Jordânia"}, {"grupo": "J", "team_a": "Argélia", "score_a": 2, "score_b": 2, "team_b": "Áustria"}, {"grupo": "J", "team_a": "Argélia", "score_a": 2, "score_b": 1, "team_b": "Jordânia"}, {"grupo": "J", "team_a": "Áustria", "score_a": 3, "score_b": 1, "team_b": "Jordânia"}, {"grupo": "K", "team_a": "Portugal", "score_a": 4, "score_b": 0, "team_b": "Rep. D. Congo"}, {"grupo": "K", "team_a": "Portugal", "score_a": 3, "score_b": 1, "team_b": "Uzbequistão"}, {"grupo": "K", "team_a": "Portugal", "score_a": 1, "score_b": 1, "team_b": "Colômbia"}, {"grupo": "K", "team_a": "Rep. D. Congo", "score_a": 1, "score_b": 2, "team_b": "Uzbequistão"}, {"grupo": "K", "team_a": "Rep. D. Congo", "score_a": 0, "score_b": 2, "team_b": "Colômbia"}, {"grupo": "K", "team_a": "Uzbequistão", "score_a": 1, "score_b": 2, "team_b": "Colômbia"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 1, "score_b": 2, "team_b": "Croácia"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 1, "score_b": 1, "team_b": "Gana"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 2, "score_b": 0, "team_b": "Panamá"}, {"grupo": "L", "team_a": "Croácia", "score_a": 2, "score_b": 1, "team_b": "Gana"}, {"grupo": "L", "team_a": "Croácia", "score_a": 3, "score_b": 0, "team_b": "Panamá"}, {"grupo": "L", "team_a": "Gana", "score_a": 2, "score_b": 1, "team_b": "Panamá"}]}, {"name": "João Macieski", "matches": [{"grupo": "A", "team_a": "México", "score_a": 2, "score_b": 0, "team_b": "África do Sul"}, {"grupo": "A", "team_a": "México", "score_a": 2, "score_b": 1, "team_b": "Coreia do Sul"}, {"grupo": "A", "team_a": "México", "score_a": 3, "score_b": 0, "team_b": "República Tcheca"}, {"grupo": "A", "team_a": "África do Sul", "score_a": 0, "score_b": 0, "team_b": "Coreia do Sul"}, {"grupo": "A", "team_a": "África do Sul", "score_a": 0, "score_b": 0, "team_b": "República Tcheca"}, {"grupo": "A", "team_a": "Coreia do Sul", "score_a": 1, "score_b": 0, "team_b": "República Tcheca"}, {"grupo": "B", "team_a": "Canadá", "score_a": 1, "score_b": 1, "team_b": "Bósnia e Herzegovina"}, {"grupo": "B", "team_a": "Canadá", "score_a": 1, "score_b": 0, "team_b": "Catar"}, {"grupo": "B", "team_a": "Canadá", "score_a": 0, "score_b": 2, "team_b": "Suíça"}, {"grupo": "B", "team_a": "Bósnia e Herzegovina", "score_a": 0, "score_b": 0, "team_b": "Catar"}, {"grupo": "B", "team_a": "Bósnia e Herzegovina", "score_a": 0, "score_b": 2, "team_b": "Suíça"}, {"grupo": "B", "team_a": "Catar", "score_a": 0, "score_b": 2, "team_b": "Suíça"}, {"grupo": "C", "team_a": "Brasil", "score_a": 1, "score_b": 0, "team_b": "Marrocos"}, {"grupo": "C", "team_a": "Brasil", "score_a": 3, "score_b": 0, "team_b": "Haiti"}, {"grupo": "C", "team_a": "Brasil", "score_a": 2, "score_b": 0, "team_b": "Escócia"}, {"grupo": "C", "team_a": "Marrocos", "score_a": 3, "score_b": 0, "team_b": "Haiti"}, {"grupo": "C", "team_a": "Marrocos", "score_a": 1, "score_b": 0, "team_b": "Escócia"}, {"grupo": "C", "team_a": "Haiti", "score_a": 0, "score_b": 1, "team_b": "Escócia"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 0, "score_b": 0, "team_b": "Paraguai"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 0, "score_b": 0, "team_b": "Austrália"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 0, "score_b": 1, "team_b": "Turquia"}, {"grupo": "D", "team_a": "Paraguai", "score_a": 1, "score_b": 1, "team_b": "Austrália"}, {"grupo": "D", "team_a": "Paraguai", "score_a": 1, "score_b": 1, "team_b": "Turquia"}, {"grupo": "D", "team_a": "Austrália", "score_a": 0, "score_b": 0, "team_b": "Turquia"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 4, "score_b": 0, "team_b": "Curaçao"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 2, "score_b": 0, "team_b": "Costa do Marfim"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 1, "score_b": 1, "team_b": "Equador"}, {"grupo": "E", "team_a": "Curaçao", "score_a": 0, "score_b": 2, "team_b": "Costa do Marfim"}, {"grupo": "E", "team_a": "Curaçao", "score_a": 0, "score_b": 2, "team_b": "Equador"}, {"grupo": "E", "team_a": "Costa do Marfim", "score_a": 0, "score_b": 1, "team_b": "Equador"}, {"grupo": "F", "team_a": "Holanda", "score_a": 1, "score_b": 1, "team_b": "Japão"}, {"grupo": "F", "team_a": "Holanda", "score_a": 1, "score_b": 0, "team_b": "Suécia"}, {"grupo": "F", "team_a": "Holanda", "score_a": 2, "score_b": 0, "team_b": "Tunísia"}, {"grupo": "F", "team_a": "Japão", "score_a": 0, "score_b": 0, "team_b": "Suécia"}, {"grupo": "F", "team_a": "Japão", "score_a": 1, "score_b": 0, "team_b": "Tunísia"}, {"grupo": "F", "team_a": "Suécia", "score_a": 0, "score_b": 0, "team_b": "Tunísia"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 1, "score_b": 1, "team_b": "Egito"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 2, "score_b": 0, "team_b": "Irã"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 3, "score_b": 1, "team_b": "Nova Zelândia"}, {"grupo": "G", "team_a": "Egito", "score_a": 1, "score_b": 0, "team_b": "Irã"}, {"grupo": "G", "team_a": "Egito", "score_a": 1, "score_b": 1, "team_b": "Nova Zelândia"}, {"grupo": "G", "team_a": "Irã", "score_a": 0, "score_b": 1, "team_b": "Nova Zelândia"}, {"grupo": "H", "team_a": "Espanha", "score_a": 4, "score_b": 0, "team_b": "Cabo Verde"}, {"grupo": "H", "team_a": "Espanha", "score_a": 3, "score_b": 0, "team_b": "Arábia Saudita"}, {"grupo": "H", "team_a": "Espanha", "score_a": 1, "score_b": 0, "team_b": "Uruguai"}, {"grupo": "H", "team_a": "Cabo Verde", "score_a": 0, "score_b": 1, "team_b": "Arábia Saudita"}, {"grupo": "H", "team_a": "Cabo Verde", "score_a": 0, "score_b": 2, "team_b": "Uruguai"}, {"grupo": "H", "team_a": "Arábia Saudita", "score_a": 0, "score_b": 1, "team_b": "Uruguai"}, {"grupo": "I", "team_a": "França", "score_a": 4, "score_b": 0, "team_b": "Senegal"}, {"grupo": "I", "team_a": "França", "score_a": 5, "score_b": 0, "team_b": "Iraque"}, {"grupo": "I", "team_a": "França", "score_a": 4, "score_b": 0, "team_b": "Noruega"}, {"grupo": "I", "team_a": "Senegal", "score_a": 1, "score_b": 0, "team_b": "Iraque"}, {"grupo": "I", "team_a": "Senegal", "score_a": 1, "score_b": 1, "team_b": "Noruega"}, {"grupo": "I", "team_a": "Iraque", "score_a": 0, "score_b": 1, "team_b": "Noruega"}, {"grupo": "J", "team_a": "Argentina", "score_a": 2, "score_b": 0, "team_b": "Argélia"}, {"grupo": "J", "team_a": "Argentina", "score_a": 2, "score_b": 1, "team_b": "Áustria"}, {"grupo": "J", "team_a": "Argentina", "score_a": 2, "score_b": 0, "team_b": "Jordânia"}, {"grupo": "J", "team_a": "Argélia", "score_a": 0, "score_b": 1, "team_b": "Áustria"}, {"grupo": "J", "team_a": "Argélia", "score_a": 0, "score_b": 1, "team_b": "Jordânia"}, {"grupo": "J", "team_a": "Áustria", "score_a": 0, "score_b": 0, "team_b": "Jordânia"}, {"grupo": "K", "team_a": "Portugal", "score_a": 2, "score_b": 0, "team_b": "Rep. D. Congo"}, {"grupo": "K", "team_a": "Portugal", "score_a": 2, "score_b": 0, "team_b": "Uzbequistão"}, {"grupo": "K", "team_a": "Portugal", "score_a": 1, "score_b": 1, "team_b": "Colômbia"}, {"grupo": "K", "team_a": "Rep. D. Congo", "score_a": 0, "score_b": 0, "team_b": "Uzbequistão"}, {"grupo": "K", "team_a": "Rep. D. Congo", "score_a": 0, "score_b": 2, "team_b": "Colômbia"}, {"grupo": "K", "team_a": "Uzbequistão", "score_a": 0, "score_b": 2, "team_b": "Colômbia"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 1, "score_b": 1, "team_b": "Croácia"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 1, "score_b": 0, "team_b": "Gana"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 5, "score_b": 0, "team_b": "Panamá"}, {"grupo": "L", "team_a": "Croácia", "score_a": 1, "score_b": 0, "team_b": "Gana"}, {"grupo": "L", "team_a": "Croácia", "score_a": 4, "score_b": 0, "team_b": "Panamá"}, {"grupo": "L", "team_a": "Gana", "score_a": 1, "score_b": 0, "team_b": "Panamá"}]}, {"name": "Gustavo Martins", "matches": [{"grupo": "A", "team_a": "México", "score_a": 2, "score_b": 0, "team_b": "África do Sul"}, {"grupo": "A", "team_a": "México", "score_a": 2, "score_b": 1, "team_b": "Coreia do Sul"}, {"grupo": "A", "team_a": "México", "score_a": 1, "score_b": 2, "team_b": "República Tcheca"}, {"grupo": "A", "team_a": "África do Sul", "score_a": 0, "score_b": 1, "team_b": "Coreia do Sul"}, {"grupo": "A", "team_a": "África do Sul", "score_a": 1, "score_b": 2, "team_b": "República Tcheca"}, {"grupo": "A", "team_a": "Coreia do Sul", "score_a": 1, "score_b": 2, "team_b": "República Tcheca"}, {"grupo": "B", "team_a": "Canadá", "score_a": 2, "score_b": 1, "team_b": "Bósnia e Herzegovina"}, {"grupo": "B", "team_a": "Canadá", "score_a": 3, "score_b": 0, "team_b": "Catar"}, {"grupo": "B", "team_a": "Canadá", "score_a": 1, "score_b": 1, "team_b": "Suíça"}, {"grupo": "B", "team_a": "Bósnia e Herzegovina", "score_a": 2, "score_b": 0, "team_b": "Catar"}, {"grupo": "B", "team_a": "Bósnia e Herzegovina", "score_a": 1, "score_b": 2, "team_b": "Suíça"}, {"grupo": "B", "team_a": "Catar", "score_a": 1, "score_b": 2, "team_b": "Suíça"}, {"grupo": "C", "team_a": "Brasil", "score_a": 2, "score_b": 0, "team_b": "Marrocos"}, {"grupo": "C", "team_a": "Brasil", "score_a": 4, "score_b": 0, "team_b": "Haiti"}, {"grupo": "C", "team_a": "Brasil", "score_a": 2, "score_b": 1, "team_b": "Escócia"}, {"grupo": "C", "team_a": "Marrocos", "score_a": 3, "score_b": 0, "team_b": "Haiti"}, {"grupo": "C", "team_a": "Marrocos", "score_a": 2, "score_b": 1, "team_b": "Escócia"}, {"grupo": "C", "team_a": "Haiti", "score_a": 0, "score_b": 2, "team_b": "Escócia"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 0, "score_b": 1, "team_b": "Paraguai"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 2, "score_b": 0, "team_b": "Austrália"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 1, "score_b": 2, "team_b": "Turquia"}, {"grupo": "D", "team_a": "Paraguai", "score_a": 2, "score_b": 0, "team_b": "Austrália"}, {"grupo": "D", "team_a": "Paraguai", "score_a": 1, "score_b": 1, "team_b": "Turquia"}, {"grupo": "D", "team_a": "Austrália", "score_a": 1, "score_b": 2, "team_b": "Turquia"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 4, "score_b": 0, "team_b": "Curaçao"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 4, "score_b": 1, "team_b": "Costa do Marfim"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 3, "score_b": 1, "team_b": "Equador"}, {"grupo": "E", "team_a": "Curaçao", "score_a": 0, "score_b": 3, "team_b": "Costa do Marfim"}, {"grupo": "E", "team_a": "Curaçao", "score_a": 0, "score_b": 3, "team_b": "Equador"}, {"grupo": "E", "team_a": "Costa do Marfim", "score_a": 2, "score_b": 1, "team_b": "Equador"}, {"grupo": "F", "team_a": "Holanda", "score_a": 3, "score_b": 1, "team_b": "Japão"}, {"grupo": "F", "team_a": "Holanda", "score_a": 2, "score_b": 1, "team_b": "Suécia"}, {"grupo": "F", "team_a": "Holanda", "score_a": 2, "score_b": 0, "team_b": "Tunísia"}, {"grupo": "F", "team_a": "Japão", "score_a": 2, "score_b": 1, "team_b": "Suécia"}, {"grupo": "F", "team_a": "Japão", "score_a": 2, "score_b": 1, "team_b": "Tunísia"}, {"grupo": "F", "team_a": "Suécia", "score_a": 2, "score_b": 0, "team_b": "Tunísia"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 3, "score_b": 1, "team_b": "Egito"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 3, "score_b": 0, "team_b": "Irã"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 3, "score_b": 0, "team_b": "Nova Zelândia"}, {"grupo": "G", "team_a": "Egito", "score_a": 2, "score_b": 0, "team_b": "Irã"}, {"grupo": "G", "team_a": "Egito", "score_a": 2, "score_b": 1, "team_b": "Nova Zelândia"}, {"grupo": "G", "team_a": "Irã", "score_a": 1, "score_b": 0, "team_b": "Nova Zelândia"}, {"grupo": "H", "team_a": "Espanha", "score_a": 5, "score_b": 0, "team_b": "Cabo Verde"}, {"grupo": "H", "team_a": "Espanha", "score_a": 3, "score_b": 0, "team_b": "Arábia Saudita"}, {"grupo": "H", "team_a": "Espanha", "score_a": 2, "score_b": 1, "team_b": "Uruguai"}, {"grupo": "H", "team_a": "Cabo Verde", "score_a": 0, "score_b": 2, "team_b": "Arábia Saudita"}, {"grupo": "H", "team_a": "Cabo Verde", "score_a": 0, "score_b": 3, "team_b": "Uruguai"}, {"grupo": "H", "team_a": "Arábia Saudita", "score_a": 1, "score_b": 2, "team_b": "Uruguai"}, {"grupo": "I", "team_a": "França", "score_a": 3, "score_b": 0, "team_b": "Senegal"}, {"grupo": "I", "team_a": "França", "score_a": 4, "score_b": 0, "team_b": "Iraque"}, {"grupo": "I", "team_a": "França", "score_a": 3, "score_b": 1, "team_b": "Noruega"}, {"grupo": "I", "team_a": "Senegal", "score_a": 2, "score_b": 0, "team_b": "Iraque"}, {"grupo": "I", "team_a": "Senegal", "score_a": 1, "score_b": 2, "team_b": "Noruega"}, {"grupo": "I", "team_a": "Iraque", "score_a": 0, "score_b": 2, "team_b": "Noruega"}, {"grupo": "J", "team_a": "Argentina", "score_a": 3, "score_b": 0, "team_b": "Argélia"}, {"grupo": "J", "team_a": "Argentina", "score_a": 3, "score_b": 0, "team_b": "Áustria"}, {"grupo": "J", "team_a": "Argentina", "score_a": 4, "score_b": 0, "team_b": "Jordânia"}, {"grupo": "J", "team_a": "Argélia", "score_a": 1, "score_b": 2, "team_b": "Áustria"}, {"grupo": "J", "team_a": "Argélia", "score_a": 2, "score_b": 0, "team_b": "Jordânia"}, {"grupo": "J", "team_a": "Áustria", "score_a": 2, "score_b": 0, "team_b": "Jordânia"}, {"grupo": "K", "team_a": "Portugal", "score_a": 4, "score_b": 0, "team_b": "Rep. D. Congo"}, {"grupo": "K", "team_a": "Portugal", "score_a": 4, "score_b": 0, "team_b": "Uzbequistão"}, {"grupo": "K", "team_a": "Portugal", "score_a": 3, "score_b": 2, "team_b": "Colômbia"}, {"grupo": "K", "team_a": "Rep. D. Congo", "score_a": 0, "score_b": 1, "team_b": "Uzbequistão"}, {"grupo": "K", "team_a": "Rep. D. Congo", "score_a": 0, "score_b": 3, "team_b": "Colômbia"}, {"grupo": "K", "team_a": "Uzbequistão", "score_a": 0, "score_b": 3, "team_b": "Colômbia"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 3, "score_b": 0, "team_b": "Croácia"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 3, "score_b": 0, "team_b": "Gana"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 3, "score_b": 0, "team_b": "Panamá"}, {"grupo": "L", "team_a": "Croácia", "score_a": 3, "score_b": 1, "team_b": "Gana"}, {"grupo": "L", "team_a": "Croácia", "score_a": 3, "score_b": 0, "team_b": "Panamá"}, {"grupo": "L", "team_a": "Gana", "score_a": 2, "score_b": 0, "team_b": "Panamá"}]}, {"name": "Carlinhos", "matches": [{"grupo": "A", "team_a": "México", "score_a": 1, "score_b": 0, "team_b": "África do Sul"}, {"grupo": "A", "team_a": "México", "score_a": 2, "score_b": 1, "team_b": "Coreia do Sul"}, {"grupo": "A", "team_a": "México", "score_a": 1, "score_b": 0, "team_b": "República Tcheca"}, {"grupo": "A", "team_a": "África do Sul", "score_a": 1, "score_b": 2, "team_b": "Coreia do Sul"}, {"grupo": "A", "team_a": "África do Sul", "score_a": 1, "score_b": 2, "team_b": "República Tcheca"}, {"grupo": "A", "team_a": "Coreia do Sul", "score_a": 1, "score_b": 0, "team_b": "República Tcheca"}, {"grupo": "B", "team_a": "Canadá", "score_a": 2, "score_b": 0, "team_b": "Bósnia e Herzegovina"}, {"grupo": "B", "team_a": "Canadá", "score_a": 2, "score_b": 0, "team_b": "Catar"}, {"grupo": "B", "team_a": "Canadá", "score_a": 0, "score_b": 1, "team_b": "Suíça"}, {"grupo": "B", "team_a": "Bósnia e Herzegovina", "score_a": 1, "score_b": 0, "team_b": "Catar"}, {"grupo": "B", "team_a": "Bósnia e Herzegovina", "score_a": 0, "score_b": 2, "team_b": "Suíça"}, {"grupo": "B", "team_a": "Catar", "score_a": 0, "score_b": 2, "team_b": "Suíça"}, {"grupo": "C", "team_a": "Brasil", "score_a": 1, "score_b": 0, "team_b": "Marrocos"}, {"grupo": "C", "team_a": "Brasil", "score_a": 4, "score_b": 1, "team_b": "Haiti"}, {"grupo": "C", "team_a": "Brasil", "score_a": 2, "score_b": 0, "team_b": "Escócia"}, {"grupo": "C", "team_a": "Marrocos", "score_a": 2, "score_b": 0, "team_b": "Haiti"}, {"grupo": "C", "team_a": "Marrocos", "score_a": 1, "score_b": 0, "team_b": "Escócia"}, {"grupo": "C", "team_a": "Haiti", "score_a": 0, "score_b": 2, "team_b": "Escócia"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 1, "score_b": 0, "team_b": "Paraguai"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 2, "score_b": 1, "team_b": "Austrália"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 1, "score_b": 1, "team_b": "Turquia"}, {"grupo": "D", "team_a": "Paraguai", "score_a": 1, "score_b": 0, "team_b": "Austrália"}, {"grupo": "D", "team_a": "Paraguai", "score_a": 1, "score_b": 1, "team_b": "Turquia"}, {"grupo": "D", "team_a": "Austrália", "score_a": 0, "score_b": 2, "team_b": "Turquia"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 6, "score_b": 0, "team_b": "Curaçao"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 3, "score_b": 1, "team_b": "Costa do Marfim"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 2, "score_b": 1, "team_b": "Equador"}, {"grupo": "E", "team_a": "Curaçao", "score_a": 0, "score_b": 2, "team_b": "Costa do Marfim"}, {"grupo": "E", "team_a": "Curaçao", "score_a": 0, "score_b": 2, "team_b": "Equador"}, {"grupo": "E", "team_a": "Costa do Marfim", "score_a": 1, "score_b": 2, "team_b": "Equador"}, {"grupo": "F", "team_a": "Holanda", "score_a": 2, "score_b": 1, "team_b": "Japão"}, {"grupo": "F", "team_a": "Holanda", "score_a": 2, "score_b": 0, "team_b": "Suécia"}, {"grupo": "F", "team_a": "Holanda", "score_a": 1, "score_b": 0, "team_b": "Tunísia"}, {"grupo": "F", "team_a": "Japão", "score_a": 2, "score_b": 1, "team_b": "Suécia"}, {"grupo": "F", "team_a": "Japão", "score_a": 1, "score_b": 0, "team_b": "Tunísia"}, {"grupo": "F", "team_a": "Suécia", "score_a": 2, "score_b": 1, "team_b": "Tunísia"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 3, "score_b": 1, "team_b": "Egito"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 2, "score_b": 1, "team_b": "Irã"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 3, "score_b": 0, "team_b": "Nova Zelândia"}, {"grupo": "G", "team_a": "Egito", "score_a": 1, "score_b": 1, "team_b": "Irã"}, {"grupo": "G", "team_a": "Egito", "score_a": 2, "score_b": 0, "team_b": "Nova Zelândia"}, {"grupo": "G", "team_a": "Irã", "score_a": 2, "score_b": 0, "team_b": "Nova Zelândia"}, {"grupo": "H", "team_a": "Espanha", "score_a": 5, "score_b": 0, "team_b": "Cabo Verde"}, {"grupo": "H", "team_a": "Espanha", "score_a": 4, "score_b": 1, "team_b": "Arábia Saudita"}, {"grupo": "H", "team_a": "Espanha", "score_a": 2, "score_b": 0, "team_b": "Uruguai"}, {"grupo": "H", "team_a": "Cabo Verde", "score_a": 0, "score_b": 2, "team_b": "Arábia Saudita"}, {"grupo": "H", "team_a": "Cabo Verde", "score_a": 0, "score_b": 3, "team_b": "Uruguai"}, {"grupo": "H", "team_a": "Arábia Saudita", "score_a": 1, "score_b": 2, "team_b": "Uruguai"}, {"grupo": "I", "team_a": "França", "score_a": 3, "score_b": 1, "team_b": "Senegal"}, {"grupo": "I", "team_a": "França", "score_a": 3, "score_b": 0, "team_b": "Iraque"}, {"grupo": "I", "team_a": "França", "score_a": 2, "score_b": 1, "team_b": "Noruega"}, {"grupo": "I", "team_a": "Senegal", "score_a": 2, "score_b": 0, "team_b": "Iraque"}, {"grupo": "I", "team_a": "Senegal", "score_a": 1, "score_b": 0, "team_b": "Noruega"}, {"grupo": "I", "team_a": "Iraque", "score_a": 0, "score_b": 3, "team_b": "Noruega"}, {"grupo": "J", "team_a": "Argentina", "score_a": 1, "score_b": 0, "team_b": "Argélia"}, {"grupo": "J", "team_a": "Argentina", "score_a": 2, "score_b": 0, "team_b": "Áustria"}, {"grupo": "J", "team_a": "Argentina", "score_a": 3, "score_b": 0, "team_b": "Jordânia"}, {"grupo": "J", "team_a": "Argélia", "score_a": 1, "score_b": 2, "team_b": "Áustria"}, {"grupo": "J", "team_a": "Argélia", "score_a": 2, "score_b": 0, "team_b": "Jordânia"}, {"grupo": "J", "team_a": "Áustria", "score_a": 2, "score_b": 0, "team_b": "Jordânia"}, {"grupo": "K", "team_a": "Portugal", "score_a": 3, "score_b": 0, "team_b": "Rep. D. Congo"}, {"grupo": "K", "team_a": "Portugal", "score_a": 3, "score_b": 0, "team_b": "Uzbequistão"}, {"grupo": "K", "team_a": "Portugal", "score_a": 1, "score_b": 0, "team_b": "Colômbia"}, {"grupo": "K", "team_a": "Rep. D. Congo", "score_a": 1, "score_b": 0, "team_b": "Uzbequistão"}, {"grupo": "K", "team_a": "Rep. D. Congo", "score_a": 1, "score_b": 2, "team_b": "Colômbia"}, {"grupo": "K", "team_a": "Uzbequistão", "score_a": 0, "score_b": 1, "team_b": "Colômbia"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 2, "score_b": 0, "team_b": "Croácia"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 2, "score_b": 0, "team_b": "Gana"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 3, "score_b": 0, "team_b": "Panamá"}, {"grupo": "L", "team_a": "Croácia", "score_a": 2, "score_b": 1, "team_b": "Gana"}, {"grupo": "L", "team_a": "Croácia", "score_a": 2, "score_b": 1, "team_b": "Panamá"}, {"grupo": "L", "team_a": "Gana", "score_a": 2, "score_b": 0, "team_b": "Panamá"}]}, {"name": "Cavalo", "matches": [{"grupo": "A", "team_a": "México", "score_a": 1, "score_b": 1, "team_b": "África do Sul"}, {"grupo": "A", "team_a": "México", "score_a": 2, "score_b": 1, "team_b": "Coreia do Sul"}, {"grupo": "A", "team_a": "México", "score_a": 0, "score_b": 0, "team_b": "República Tcheca"}, {"grupo": "A", "team_a": "África do Sul", "score_a": 0, "score_b": 1, "team_b": "Coreia do Sul"}, {"grupo": "A", "team_a": "África do Sul", "score_a": 1, "score_b": 1, "team_b": "República Tcheca"}, {"grupo": "A", "team_a": "Coreia do Sul", "score_a": 2, "score_b": 1, "team_b": "República Tcheca"}, {"grupo": "B", "team_a": "Canadá", "score_a": 3, "score_b": 0, "team_b": "Bósnia e Herzegovina"}, {"grupo": "B", "team_a": "Canadá", "score_a": 1, "score_b": 3, "team_b": "Catar"}, {"grupo": "B", "team_a": "Canadá", "score_a": 0, "score_b": 0, "team_b": "Suíça"}, {"grupo": "B", "team_a": "Bósnia e Herzegovina", "score_a": 0, "score_b": 1, "team_b": "Catar"}, {"grupo": "B", "team_a": "Bósnia e Herzegovina", "score_a": 1, "score_b": 1, "team_b": "Suíça"}, {"grupo": "B", "team_a": "Catar", "score_a": 0, "score_b": 1, "team_b": "Suíça"}, {"grupo": "C", "team_a": "Brasil", "score_a": 2, "score_b": 1, "team_b": "Marrocos"}, {"grupo": "C", "team_a": "Brasil", "score_a": 4, "score_b": 0, "team_b": "Haiti"}, {"grupo": "C", "team_a": "Brasil", "score_a": 1, "score_b": 0, "team_b": "Escócia"}, {"grupo": "C", "team_a": "Marrocos", "score_a": 2, "score_b": 0, "team_b": "Haiti"}, {"grupo": "C", "team_a": "Marrocos", "score_a": 1, "score_b": 1, "team_b": "Escócia"}, {"grupo": "C", "team_a": "Haiti", "score_a": 0, "score_b": 2, "team_b": "Escócia"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 0, "score_b": 0, "team_b": "Paraguai"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 1, "score_b": 0, "team_b": "Austrália"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 0, "score_b": 2, "team_b": "Turquia"}, {"grupo": "D", "team_a": "Paraguai", "score_a": 1, "score_b": 1, "team_b": "Austrália"}, {"grupo": "D", "team_a": "Paraguai", "score_a": 0, "score_b": 1, "team_b": "Turquia"}, {"grupo": "D", "team_a": "Austrália", "score_a": 1, "score_b": 1, "team_b": "Turquia"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 4, "score_b": 0, "team_b": "Curaçao"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 3, "score_b": 1, "team_b": "Costa do Marfim"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 2, "score_b": 2, "team_b": "Equador"}, {"grupo": "E", "team_a": "Curaçao", "score_a": 1, "score_b": 1, "team_b": "Costa do Marfim"}, {"grupo": "E", "team_a": "Curaçao", "score_a": 0, "score_b": 3, "team_b": "Equador"}, {"grupo": "E", "team_a": "Costa do Marfim", "score_a": 1, "score_b": 0, "team_b": "Equador"}, {"grupo": "F", "team_a": "Holanda", "score_a": 2, "score_b": 1, "team_b": "Japão"}, {"grupo": "F", "team_a": "Holanda", "score_a": 1, "score_b": 1, "team_b": "Suécia"}, {"grupo": "F", "team_a": "Holanda", "score_a": 1, "score_b": 0, "team_b": "Tunísia"}, {"grupo": "F", "team_a": "Japão", "score_a": 2, "score_b": 1, "team_b": "Suécia"}, {"grupo": "F", "team_a": "Japão", "score_a": 3, "score_b": 1, "team_b": "Tunísia"}, {"grupo": "F", "team_a": "Suécia", "score_a": 2, "score_b": 0, "team_b": "Tunísia"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 1, "score_b": 2, "team_b": "Egito"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 1, "score_b": 0, "team_b": "Irã"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 0, "score_b": 0, "team_b": "Nova Zelândia"}, {"grupo": "G", "team_a": "Egito", "score_a": 1, "score_b": 0, "team_b": "Irã"}, {"grupo": "G", "team_a": "Egito", "score_a": 2, "score_b": 0, "team_b": "Nova Zelândia"}, {"grupo": "G", "team_a": "Irã", "score_a": 0, "score_b": 0, "team_b": "Nova Zelândia"}, {"grupo": "H", "team_a": "Espanha", "score_a": 3, "score_b": 0, "team_b": "Cabo Verde"}, {"grupo": "H", "team_a": "Espanha", "score_a": 2, "score_b": 1, "team_b": "Arábia Saudita"}, {"grupo": "H", "team_a": "Espanha", "score_a": 3, "score_b": 0, "team_b": "Uruguai"}, {"grupo": "H", "team_a": "Cabo Verde", "score_a": 1, "score_b": 2, "team_b": "Arábia Saudita"}, {"grupo": "H", "team_a": "Cabo Verde", "score_a": 0, "score_b": 1, "team_b": "Uruguai"}, {"grupo": "H", "team_a": "Arábia Saudita", "score_a": 1, "score_b": 1, "team_b": "Uruguai"}, {"grupo": "I", "team_a": "França", "score_a": 3, "score_b": 1, "team_b": "Senegal"}, {"grupo": "I", "team_a": "França", "score_a": 2, "score_b": 0, "team_b": "Iraque"}, {"grupo": "I", "team_a": "França", "score_a": 4, "score_b": 0, "team_b": "Noruega"}, {"grupo": "I", "team_a": "Senegal", "score_a": 1, "score_b": 1, "team_b": "Iraque"}, {"grupo": "I", "team_a": "Senegal", "score_a": 2, "score_b": 1, "team_b": "Noruega"}, {"grupo": "I", "team_a": "Iraque", "score_a": 0, "score_b": 1, "team_b": "Noruega"}, {"grupo": "J", "team_a": "Argentina", "score_a": 3, "score_b": 1, "team_b": "Argélia"}, {"grupo": "J", "team_a": "Argentina", "score_a": 4, "score_b": 0, "team_b": "Áustria"}, {"grupo": "J", "team_a": "Argentina", "score_a": 2, "score_b": 0, "team_b": "Jordânia"}, {"grupo": "J", "team_a": "Argélia", "score_a": 1, "score_b": 0, "team_b": "Áustria"}, {"grupo": "J", "team_a": "Argélia", "score_a": 0, "score_b": 0, "team_b": "Jordânia"}, {"grupo": "J", "team_a": "Áustria", "score_a": 1, "score_b": 1, "team_b": "Jordânia"}, {"grupo": "K", "team_a": "Portugal", "score_a": 2, "score_b": 0, "team_b": "Rep. D. Congo"}, {"grupo": "K", "team_a": "Portugal", "score_a": 1, "score_b": 0, "team_b": "Uzbequistão"}, {"grupo": "K", "team_a": "Portugal", "score_a": 2, "score_b": 2, "team_b": "Colômbia"}, {"grupo": "K", "team_a": "Rep. D. Congo", "score_a": 0, "score_b": 1, "team_b": "Uzbequistão"}, {"grupo": "K", "team_a": "Rep. D. Congo", "score_a": 1, "score_b": 3, "team_b": "Colômbia"}, {"grupo": "K", "team_a": "Uzbequistão", "score_a": 0, "score_b": 2, "team_b": "Colômbia"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 2, "score_b": 2, "team_b": "Croácia"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 1, "score_b": 2, "team_b": "Gana"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 3, "score_b": 0, "team_b": "Panamá"}, {"grupo": "L", "team_a": "Croácia", "score_a": 1, "score_b": 1, "team_b": "Gana"}, {"grupo": "L", "team_a": "Croácia", "score_a": 0, "score_b": 0, "team_b": "Panamá"}, {"grupo": "L", "team_a": "Gana", "score_a": 1, "score_b": 0, "team_b": "Panamá"}]}, {"name": "Malta", "matches": [{"grupo": "A", "team_a": "México", "score_a": 2, "score_b": 1, "team_b": "África do Sul"}, {"grupo": "A", "team_a": "México", "score_a": 1, "score_b": 2, "team_b": "Coreia do Sul"}, {"grupo": "A", "team_a": "México", "score_a": 2, "score_b": 2, "team_b": "República Tcheca"}, {"grupo": "A", "team_a": "África do Sul", "score_a": 0, "score_b": 2, "team_b": "Coreia do Sul"}, {"grupo": "A", "team_a": "África do Sul", "score_a": 1, "score_b": 1, "team_b": "República Tcheca"}, {"grupo": "A", "team_a": "Coreia do Sul", "score_a": 2, "score_b": 2, "team_b": "República Tcheca"}, {"grupo": "B", "team_a": "Canadá", "score_a": 2, "score_b": 1, "team_b": "Bósnia e Herzegovina"}, {"grupo": "B", "team_a": "Canadá", "score_a": 1, "score_b": 0, "team_b": "Catar"}, {"grupo": "B", "team_a": "Canadá", "score_a": 0, "score_b": 2, "team_b": "Suíça"}, {"grupo": "B", "team_a": "Bósnia e Herzegovina", "score_a": 0, "score_b": 0, "team_b": "Catar"}, {"grupo": "B", "team_a": "Bósnia e Herzegovina", "score_a": 1, "score_b": 3, "team_b": "Suíça"}, {"grupo": "B", "team_a": "Catar", "score_a": 0, "score_b": 3, "team_b": "Suíça"}, {"grupo": "C", "team_a": "Brasil", "score_a": 3, "score_b": 2, "team_b": "Marrocos"}, {"grupo": "C", "team_a": "Brasil", "score_a": 4, "score_b": 1, "team_b": "Haiti"}, {"grupo": "C", "team_a": "Brasil", "score_a": 2, "score_b": 0, "team_b": "Escócia"}, {"grupo": "C", "team_a": "Marrocos", "score_a": 2, "score_b": 0, "team_b": "Haiti"}, {"grupo": "C", "team_a": "Marrocos", "score_a": 1, "score_b": 1, "team_b": "Escócia"}, {"grupo": "C", "team_a": "Haiti", "score_a": 1, "score_b": 3, "team_b": "Escócia"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 2, "score_b": 1, "team_b": "Paraguai"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 1, "score_b": 0, "team_b": "Austrália"}, {"grupo": "D", "team_a": "Estados Unidos", "score_a": 0, "score_b": 1, "team_b": "Turquia"}, {"grupo": "D", "team_a": "Paraguai", "score_a": 0, "score_b": 0, "team_b": "Austrália"}, {"grupo": "D", "team_a": "Paraguai", "score_a": 1, "score_b": 1, "team_b": "Turquia"}, {"grupo": "D", "team_a": "Austrália", "score_a": 0, "score_b": 2, "team_b": "Turquia"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 3, "score_b": 0, "team_b": "Curaçao"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 1, "score_b": 2, "team_b": "Costa do Marfim"}, {"grupo": "E", "team_a": "Alemanha", "score_a": 2, "score_b": 1, "team_b": "Equador"}, {"grupo": "E", "team_a": "Curaçao", "score_a": 0, "score_b": 2, "team_b": "Costa do Marfim"}, {"grupo": "E", "team_a": "Curaçao", "score_a": 1, "score_b": 1, "team_b": "Equador"}, {"grupo": "E", "team_a": "Costa do Marfim", "score_a": 1, "score_b": 0, "team_b": "Equador"}, {"grupo": "F", "team_a": "Holanda", "score_a": 2, "score_b": 1, "team_b": "Japão"}, {"grupo": "F", "team_a": "Holanda", "score_a": 1, "score_b": 1, "team_b": "Suécia"}, {"grupo": "F", "team_a": "Holanda", "score_a": 2, "score_b": 0, "team_b": "Tunísia"}, {"grupo": "F", "team_a": "Japão", "score_a": 0, "score_b": 1, "team_b": "Suécia"}, {"grupo": "F", "team_a": "Japão", "score_a": 1, "score_b": 0, "team_b": "Tunísia"}, {"grupo": "F", "team_a": "Suécia", "score_a": 2, "score_b": 0, "team_b": "Tunísia"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 1, "score_b": 1, "team_b": "Egito"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 2, "score_b": 0, "team_b": "Irã"}, {"grupo": "G", "team_a": "Bélgica", "score_a": 3, "score_b": 0, "team_b": "Nova Zelândia"}, {"grupo": "G", "team_a": "Egito", "score_a": 2, "score_b": 1, "team_b": "Irã"}, {"grupo": "G", "team_a": "Egito", "score_a": 1, "score_b": 2, "team_b": "Nova Zelândia"}, {"grupo": "G", "team_a": "Irã", "score_a": 0, "score_b": 1, "team_b": "Nova Zelândia"}, {"grupo": "H", "team_a": "Espanha", "score_a": 4, "score_b": 0, "team_b": "Cabo Verde"}, {"grupo": "H", "team_a": "Espanha", "score_a": 3, "score_b": 1, "team_b": "Arábia Saudita"}, {"grupo": "H", "team_a": "Espanha", "score_a": 2, "score_b": 0, "team_b": "Uruguai"}, {"grupo": "H", "team_a": "Cabo Verde", "score_a": 2, "score_b": 2, "team_b": "Arábia Saudita"}, {"grupo": "H", "team_a": "Cabo Verde", "score_a": 0, "score_b": 2, "team_b": "Uruguai"}, {"grupo": "H", "team_a": "Arábia Saudita", "score_a": 1, "score_b": 2, "team_b": "Uruguai"}, {"grupo": "I", "team_a": "França", "score_a": 3, "score_b": 1, "team_b": "Senegal"}, {"grupo": "I", "team_a": "França", "score_a": 5, "score_b": 0, "team_b": "Iraque"}, {"grupo": "I", "team_a": "França", "score_a": 4, "score_b": 1, "team_b": "Noruega"}, {"grupo": "I", "team_a": "Senegal", "score_a": 2, "score_b": 1, "team_b": "Iraque"}, {"grupo": "I", "team_a": "Senegal", "score_a": 2, "score_b": 2, "team_b": "Noruega"}, {"grupo": "I", "team_a": "Iraque", "score_a": 1, "score_b": 2, "team_b": "Noruega"}, {"grupo": "J", "team_a": "Argentina", "score_a": 1, "score_b": 0, "team_b": "Argélia"}, {"grupo": "J", "team_a": "Argentina", "score_a": 2, "score_b": 0, "team_b": "Áustria"}, {"grupo": "J", "team_a": "Argentina", "score_a": 3, "score_b": 0, "team_b": "Jordânia"}, {"grupo": "J", "team_a": "Argélia", "score_a": 0, "score_b": 0, "team_b": "Áustria"}, {"grupo": "J", "team_a": "Argélia", "score_a": 1, "score_b": 0, "team_b": "Jordânia"}, {"grupo": "J", "team_a": "Áustria", "score_a": 2, "score_b": 1, "team_b": "Jordânia"}, {"grupo": "K", "team_a": "Portugal", "score_a": 3, "score_b": 0, "team_b": "Rep. D. Congo"}, {"grupo": "K", "team_a": "Portugal", "score_a": 2, "score_b": 0, "team_b": "Uzbequistão"}, {"grupo": "K", "team_a": "Portugal", "score_a": 2, "score_b": 2, "team_b": "Colômbia"}, {"grupo": "K", "team_a": "Rep. D. Congo", "score_a": 1, "score_b": 1, "team_b": "Uzbequistão"}, {"grupo": "K", "team_a": "Rep. D. Congo", "score_a": 0, "score_b": 1, "team_b": "Colômbia"}, {"grupo": "K", "team_a": "Uzbequistão", "score_a": 0, "score_b": 2, "team_b": "Colômbia"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 2, "score_b": 1, "team_b": "Croácia"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 3, "score_b": 0, "team_b": "Gana"}, {"grupo": "L", "team_a": "Inglaterra", "score_a": 4, "score_b": 2, "team_b": "Panamá"}, {"grupo": "L", "team_a": "Croácia", "score_a": 1, "score_b": 0, "team_b": "Gana"}, {"grupo": "L", "team_a": "Croácia", "score_a": 1, "score_b": 1, "team_b": "Panamá"}, {"grupo": "L", "team_a": "Gana", "score_a": 0, "score_b": 0, "team_b": "Panamá"}]}];
+var SCHEDULE=[
+  {date:"11/06",time:"16h",ta:"México",tb:"África do Sul",g:"A"},
+  {date:"11/06",time:"23h",ta:"Coreia do Sul",tb:"República Tcheca",g:"A"},
+  {date:"12/06",time:"16h",ta:"Canadá",tb:"Bósnia e Herzegovina",g:"B"},
+  {date:"12/06",time:"22h",ta:"Estados Unidos",tb:"Paraguai",g:"D"},
+  {date:"13/06",time:"16h",ta:"Catar",tb:"Suíça",g:"B"},
+  {date:"13/06",time:"19h",ta:"Brasil",tb:"Marrocos",g:"C"},
+  {date:"13/06",time:"22h",ta:"Haiti",tb:"Escócia",g:"C"},
+  {date:"14/06",time:"01h",ta:"Austrália",tb:"Turquia",g:"D"},
+  {date:"14/06",time:"14h",ta:"Alemanha",tb:"Curaçao",g:"E"},
+  {date:"14/06",time:"17h",ta:"Holanda",tb:"Japão",g:"F"},
+  {date:"14/06",time:"20h",ta:"Costa do Marfim",tb:"Equador",g:"E"},
+  {date:"14/06",time:"23h",ta:"Suécia",tb:"Tunísia",g:"F"},
+  {date:"15/06",time:"13h",ta:"Espanha",tb:"Cabo Verde",g:"H"},
+  {date:"15/06",time:"16h",ta:"Bélgica",tb:"Egito",g:"G"},
+  {date:"15/06",time:"19h",ta:"Arábia Saudita",tb:"Uruguai",g:"H"},
+  {date:"15/06",time:"22h",ta:"Irã",tb:"Nova Zelândia",g:"G"},
+  {date:"16/06",time:"16h",ta:"França",tb:"Senegal",g:"I"},
+  {date:"16/06",time:"19h",ta:"Iraque",tb:"Noruega",g:"I"},
+  {date:"16/06",time:"22h",ta:"Argentina",tb:"Argélia",g:"J"},
+  {date:"17/06",time:"01h",ta:"Áustria",tb:"Jordânia",g:"J"},
+  {date:"17/06",time:"14h",ta:"Portugal",tb:"Rep. D. Congo",g:"K"},
+  {date:"17/06",time:"17h",ta:"Inglaterra",tb:"Croácia",g:"L"},
+  {date:"17/06",time:"20h",ta:"Gana",tb:"Panamá",g:"L"},
+  {date:"17/06",time:"23h",ta:"Uzbequistão",tb:"Colômbia",g:"K"},
+  {date:"18/06",time:"13h",ta:"República Tcheca",tb:"África do Sul",g:"A"},
+  {date:"18/06",time:"16h",ta:"Suíça",tb:"Bósnia e Herzegovina",g:"B"},
+  {date:"18/06",time:"19h",ta:"Canadá",tb:"Catar",g:"B"},
+  {date:"18/06",time:"22h",ta:"México",tb:"Coreia do Sul",g:"A"},
+  {date:"19/06",time:"16h",ta:"Estados Unidos",tb:"Austrália",g:"D"},
+  {date:"19/06",time:"19h",ta:"Escócia",tb:"Marrocos",g:"C"},
+  {date:"19/06",time:"21h30",ta:"Brasil",tb:"Haiti",g:"C"},
+  {date:"20/06",time:"00h",ta:"Turquia",tb:"Paraguai",g:"D"},
+  {date:"20/06",time:"14h",ta:"Holanda",tb:"Suécia",g:"F"},
+  {date:"20/06",time:"17h",ta:"Alemanha",tb:"Costa do Marfim",g:"E"},
+  {date:"20/06",time:"21h",ta:"Equador",tb:"Curaçao",g:"E"},
+  {date:"21/06",time:"01h",ta:"Tunísia",tb:"Japão",g:"F"},
+  {date:"21/06",time:"13h",ta:"Espanha",tb:"Arábia Saudita",g:"H"},
+  {date:"21/06",time:"16h",ta:"Bélgica",tb:"Irã",g:"G"},
+  {date:"21/06",time:"19h",ta:"Uruguai",tb:"Cabo Verde",g:"H"},
+  {date:"21/06",time:"22h",ta:"Nova Zelândia",tb:"Egito",g:"G"},
+  {date:"22/06",time:"14h",ta:"Argentina",tb:"Áustria",g:"J"},
+  {date:"22/06",time:"18h",ta:"França",tb:"Iraque",g:"J"},
+  {date:"22/06",time:"21h",ta:"Noruega",tb:"Senegal",g:"I"},
+  {date:"23/06",time:"00h",ta:"Jordânia",tb:"Argélia",g:"J"},
+  {date:"23/06",time:"14h",ta:"Portugal",tb:"Uzbequistão",g:"K"},
+  {date:"23/06",time:"17h",ta:"Inglaterra",tb:"Gana",g:"L"},
+  {date:"23/06",time:"20h",ta:"Panamá",tb:"Croácia",g:"L"},
+  {date:"23/06",time:"23h",ta:"Colômbia",tb:"Rep. D. Congo",g:"K"},
+  {date:"24/06",time:"16h",ta:"Suíça",tb:"Canadá",g:"B"},
+  {date:"24/06",time:"16h",ta:"Bósnia e Herzegovina",tb:"Catar",g:"B"},
+  {date:"24/06",time:"19h",ta:"Escócia",tb:"Brasil",g:"C"},
+  {date:"24/06",time:"19h",ta:"Marrocos",tb:"Haiti",g:"C"},
+  {date:"24/06",time:"22h",ta:"República Tcheca",tb:"México",g:"A"},
+  {date:"24/06",time:"22h",ta:"África do Sul",tb:"Coreia do Sul",g:"A"},
+  {date:"25/06",time:"17h",ta:"Curaçao",tb:"Costa do Marfim",g:"E"},
+  {date:"25/06",time:"17h",ta:"Equador",tb:"Alemanha",g:"E"},
+  {date:"25/06",time:"20h",ta:"Japão",tb:"Suécia",g:"F"},
+  {date:"25/06",time:"20h",ta:"Tunísia",tb:"Holanda",g:"F"},
+  {date:"25/06",time:"23h",ta:"Turquia",tb:"Estados Unidos",g:"D"},
+  {date:"25/06",time:"23h",ta:"Paraguai",tb:"Austrália",g:"D"},
+  {date:"26/06",time:"16h",ta:"Noruega",tb:"França",g:"I"},
+  {date:"26/06",time:"16h",ta:"Senegal",tb:"Iraque",g:"I"},
+  {date:"26/06",time:"21h",ta:"Cabo Verde",tb:"Arábia Saudita",g:"H"},
+  {date:"26/06",time:"21h",ta:"Uruguai",tb:"Espanha",g:"H"},
+  {date:"27/06",time:"00h",ta:"Egito",tb:"Irã",g:"G"},
+  {date:"27/06",time:"00h",ta:"Nova Zelândia",tb:"Bélgica",g:"G"},
+  {date:"27/06",time:"18h",ta:"Panamá",tb:"Inglaterra",g:"L"},
+  {date:"27/06",time:"18h",ta:"Croácia",tb:"Gana",g:"L"},
+  {date:"27/06",time:"20h30",ta:"Colômbia",tb:"Portugal",g:"K"},
+  {date:"27/06",time:"20h30",ta:"Rep. D. Congo",tb:"Uzbequistão",g:"K"},
+  {date:"27/06",time:"23h",ta:"Argélia",tb:"Áustria",g:"J"},
+  {date:"27/06",time:"23h",ta:"Jordânia",tb:"Argentina",g:"J"}
+];
+
+// Flag images via flagcdn.com (ISO 3166-1 alpha-2 codes)
+var FLAG_CODES={
+  // Portuguese names (bolão)
+  'México':'mx','África do Sul':'za','Coreia do Sul':'kr','República Tcheca':'cz',
+  'Canadá':'ca','Bósnia e Herzegovina':'ba','Catar':'qa','Suíça':'ch',
+  'Brasil':'br','Marrocos':'ma','Haiti':'ht','Escócia':'gb-sct',
+  'Estados Unidos':'us','Paraguai':'py','Austrália':'au','Turquia':'tr',
+  'Alemanha':'de','Curaçao':'cw','Costa do Marfim':'ci','Equador':'ec',
+  'Holanda':'nl','Japão':'jp','Suécia':'se','Tunísia':'tn',
+  'Bélgica':'be','Egito':'eg','Irã':'ir','Nova Zelândia':'nz',
+  'Espanha':'es','Cabo Verde':'cv','Arábia Saudita':'sa','Uruguai':'uy',
+  'França':'fr','Senegal':'sn','Iraque':'iq','Noruega':'no',
+  'Argentina':'ar','Argélia':'dz','Áustria':'at','Jordânia':'jo',
+  'Portugal':'pt','Rep. D. Congo':'cd','Uzbequistão':'uz','Colômbia':'co',
+  'Inglaterra':'gb-eng','Croácia':'hr','Gana':'gh','Panamá':'pa',
+  // English names (ESPN scorers/events)
+  'Mexico':'mx','South Africa':'za','South Korea':'kr','Czech Republic':'cz',
+  'Canada':'ca','Bosnia-Herzegovina':'ba','Bosnia and Herzegovina':'ba','Qatar':'qa','Switzerland':'ch',
+  'Brazil':'br','Morocco':'ma','Scotland':'gb-sct',
+  'United States':'us','Paraguay':'py','Australia':'au','Turkey':'tr',
+  'Germany':'de','Curacao':'cw',"Cote d'Ivoire":'ci','Ecuador':'ec',
+  'Netherlands':'nl','Japan':'jp','Sweden':'se','Tunisia':'tn',
+  'Belgium':'be','Egypt':'eg','Iran':'ir','New Zealand':'nz',
+  'Spain':'es','Cape Verde':'cv','Saudi Arabia':'sa','Uruguay':'uy',
+  'France':'fr','Iraq':'iq','Norway':'no',
+  'Argentina':'ar','Algeria':'dz','Austria':'at','Jordan':'jo',
+  'Portugal':'pt','DR Congo':'cd','Congo DR':'cd','Uzbekistan':'uz','Colombia':'co',
+  'England':'gb-eng','Croatia':'hr','Ghana':'gh','Panama':'pa',
+  'Costa Rica':'cr','Jamaica':'jm','Chile':'cl','Peru':'pe',
+  'Serbia':'rs','Poland':'pl','Ukraine':'ua','Denmark':'dk',
+  'Wales':'gb-wls','Northern Ireland':'gb-nir'
+};
+function flagImg(team,sz){
+  var code=FLAG_CODES[team];
+  if(!code)return null;
+  var w=sz||24;
+  var h=Math.round(w*0.75);
+  // Always request w40 from flagcdn.com (guaranteed valid), then scale with CSS
+  return React.createElement('img',{
+    src:'https://flagcdn.com/w40/'+code+'.png',
+    style:{
+      width:w+'px',
+      height:h+'px',
+      borderRadius:2,
+      objectFit:'cover',
+      display:'inline-block',
+      verticalAlign:'middle',
+      flexShrink:0,
+      imageRendering:'auto'
+    },
+    alt:team,
+    loading:'lazy',
+    onError:function(e){e.target.style.display='none';}
+  });
+}
+// Keep legacy F() for any remaining uses - returns empty string now
+var FLAGS={};
+function F(t){return '';}
+var EM={'Mexico':'México','South Africa':'África do Sul','South Korea':'Coreia do Sul','Czech Republic':'República Tcheca','Bosnia-Herzegovina':'Bósnia e Herzegovina','Bosnia and Herzegovina':'Bósnia e Herzegovina','Qatar':'Catar','Switzerland':'Suíça','Brazil':'Brasil','Morocco':'Marrocos','Scotland':'Escócia','United States':'Estados Unidos','Paraguay':'Paraguai','Australia':'Austrália','Turkey':'Turquia','Germany':'Alemanha',"Cote d'Ivoire":'Costa do Marfim','Ecuador':'Equador','Netherlands':'Holanda','Japan':'Japão','Sweden':'Suécia','Tunisia':'Tunísia','Belgium':'Bélgica','Egypt':'Egito','Iran':'Irã','New Zealand':'Nova Zelândia','Spain':'Espanha','Cape Verde':'Cabo Verde','Saudi Arabia':'Arábia Saudita','Uruguay':'Uruguai','France':'França','Senegal':'Senegal','Iraq':'Iraque','Norway':'Noruega','Austria':'Áustria','Jordan':'Jordânia','Portugal':'Portugal','DR Congo':'Rep. D. Congo','Uzbekistan':'Uzbequistão','Colombia':'Colômbia','England':'Inglaterra','Croatia':'Croácia','Ghana':'Gana','Panama':'Panamá','Algeria':'Argélia','Haiti':'Haiti','Canada':'Canadá','Curacao':'Curaçao','Argentina':'Argentina'};
+function norm(t){return EM[t]||t;}
+// F() replaced by flagImg()
+
+var GROUPS=["A","B","C","D","E","F","G","H","I","J","K","L"];
+var ADMIN_PASS="392";
+var MATCH_LIST=SCHEDULE.map(function(s){return{grupo:s.g,team_a:s.ta,team_b:s.tb,date:s.date,time:s.time};});
+function mkey(m){return m.grupo+'|'+m.team_a+'|'+m.team_b;}
+function fbkey(k){return k.replace(/[.#$[\]|]/g,'_');}
+var LOOKUP={};
+RAW.forEach(function(p){LOOKUP[p.name]={};p.matches.forEach(function(m){LOOKUP[p.name][mkey(m)]={sa:m.score_a,sb:m.score_b};});});
+var TEAMS_BY_GROUP={};
+GROUPS.forEach(function(g){var s=new Set();RAW[0].matches.forEach(function(m){if(m.grupo===g){s.add(m.team_a);s.add(m.team_b);}});TEAMS_BY_GROUP[g]=[...s].sort();});
+function getW(a,b){return a>b?'A':b>a?'B':'D';}
+function calcPts(real,guess){
+  if(!real||!guess)return 0;
+  var ra=real.sa,rb=real.sb,ga=guess.sa,gb=guess.sb;
+  if(ra===null||rb===null||ga===null||gb===null)return 0;
+  if(ra===ga&&rb===gb)return 5;
+  if(getW(ra,rb)!==getW(ga,gb))return 0;
+  if(Math.abs(ra-rb)===Math.abs(ga-gb))return 4;
+  return 2;
+}
+var PTS_COL={5:'#22c55e',4:'#3b82f6',2:'#f59e0b',0:'#ef4444'};
+var PTS_BG={5:'#052e16',4:'#1e3a5f',2:'#3d2600',0:'#3b0f0f'};
+</script>
+
+<script>
+var h=React.createElement;
+var useState=React.useState;
+var useEffect=React.useEffect;
+var useMemo=React.useMemo;
+var useCallback=React.useCallback;
+var useRef=React.useRef;
+
+// ── ESPN Hook — fetches live scores, standings, AND scorers from goal details ──
+function useESPN(){
+  var s1=useState([]);   var espnEvents=s1[0],setEvents=s1[1];
+  var s2=useState([]);   var scorers=s2[0],setScorers=s2[1];
+  var s3=useState({});   var standings=s3[0],setStandings=s3[1];
+  var s4=useState(null); var lastUp=s4[0],setLastUp=s4[1];
+  // scorers built from goal events across all matches
+  var s5=useState({});   var goalMap=s5[0],setGoalMap=s5[1]; // name->goals
+
+  var fetchScores=useCallback(function(){
+    // Fetch all group stage matches with a broad date range
+    var today=new Date();
+    var dd=String(today.getDate()).padStart(2,'0');
+    var mm=String(today.getMonth()+1).padStart(2,'0');
+    var yyyy=today.getFullYear();
+    var todayStr=yyyy+mm+dd;
+    fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?limit=100&dates=20260611-'+todayStr)
+    .then(function(r){return r.json();})
+    .then(function(d){
+      var gmap={};
+      var evts=(d.events||[]).map(function(e){
+        var comp=(e.competitions||[])[0]||{};
+        var comps=comp.competitors||[];
+        var home=comps.find(function(t){return t.homeAway==='home';})||comps[0]||{};
+        var away=comps.find(function(t){return t.homeAway==='away';})||comps[1]||{};
+        var st=(comp.status||{}).type||{};
+        var sn=st.name||'';
+        // extract goal scorers from details
+        (comp.details||[]).forEach(function(det){
+          if(det.type&&(det.type.text==='Goal'||det.type.id==='goal'||det.type.name==='goal')){
+            var athls=det.athletesInvolved||[];
+            if(athls.length>0){
+              var nm=athls[0].displayName||athls[0].fullName||'';
+              var team=det.team&&(EM[det.team.displayName]||det.team.displayName)||'';
+              if(nm){
+                if(!gmap[nm]) gmap[nm]={name:nm,team:team,goals:0};
+                gmap[nm].goals++;
+              }
+            }
+          }
+        });
+        return{
+          id:e.id,
+          homeTeam:norm(home.team&&home.team.displayName||''),
+          awayTeam:norm(away.team&&away.team.displayName||''),
+          homeLogo:(home.team&&home.team.logo)||'',
+          awayLogo:(away.team&&away.team.logo)||'',
+          homeColor:(home.team&&home.team.color)||'1a3a8a',
+          awayColor:(away.team&&away.team.color)||'1a3a8a',
+          homeScore:parseInt(home.score||'0'),
+          awayScore:parseInt(away.score||'0'),
+          homeWin:!!home.winner,
+          awayWin:!!away.winner,
+          clock:(comp.status&&comp.status.displayClock)||'',
+          period:(comp.status&&comp.status.period)||0,
+          isLive:sn==='STATUS_IN_PROGRESS',
+          isHalf:sn==='STATUS_HALFTIME',
+          isFinal:sn==='STATUS_FINAL'||sn==='STATUS_FULL_TIME'||sn==='STATUS_END_PERIOD',
+          isPre:sn==='STATUS_SCHEDULED',
+          statusDetail:st.shortDetail||'',
+          date:e.date||''
+        };
+      });
+      setEvents(evts);
+      setLastUp(new Date());
+      // Update goal map
+      if(Object.keys(gmap).length>0){
+        setGoalMap(function(prev){
+          var merged=Object.assign({},prev);
+          Object.keys(gmap).forEach(function(k){merged[k]=gmap[k];});
+          return merged;
+        });
+      }
+    }).catch(function(e){console.warn('ESPN scoreboard:',e);});
+  },[]);
+
+  var fetchStandings=useCallback(function(){
+    fetch('https://site.api.espn.com/apis/v2/sports/soccer/fifa.world/standings')
+    .then(function(r){return r.json();})
+    .then(function(d){
+      var s={};
+      (d.standings||[]).forEach(function(grp){
+        var gn=(grp.name||'').replace(/Group /i,'').replace(/Grupo /i,'').trim();
+        if(!gn||gn.length>2)return;
+        s[gn]=(grp.entries||[]).map(function(e){
+          function sv(n){var x=(e.stats||[]).find(function(x){return x.name===n;});return x?x.value:0;}
+          return{team:norm(e.team&&e.team.displayName||e.team&&e.team.name||''),logo:e.team&&e.team.logo||'',played:sv('gamesPlayed'),wins:sv('wins'),draws:sv('ties'),losses:sv('losses'),gf:sv('pointsFor'),ga:sv('pointsAgainst'),pts:sv('points')};
+        });
+      });
+      setStandings(s);
+    }).catch(function(){});
+  },[]);
+
+  // Build top 5 scorers list from goalMap
+  var topScorers=useMemo(function(){
+    return Object.values(goalMap).filter(function(x){return x.goals>0;}).sort(function(a,b){return b.goals-a.goals;}).slice(0,5);
+  },[goalMap]);
+
+  useEffect(function(){
+    // Immediate fetch of all group stage results (wide date range)
+    fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?limit=100&dates=20260611-20260627')
+    .then(function(r){return r.json();})
+    .then(function(d){
+      // Process all events from this full-range fetch
+      var allEvts=(d.events||[]);
+      allEvts.forEach(function(e){
+        var comp=(e.competitions||[])[0]||{};
+        var comps=comp.competitors||[];
+        var home=comps.find(function(t){return t.homeAway==='home';})||comps[0]||{};
+        var away=comps.find(function(t){return t.homeAway==='away';})||comps[1]||{};
+        var st=((comp.status||{}).type||{}).name||'';
+        var isFin=st==='STATUS_FINAL'||st==='STATUS_FULL_TIME'||st==='STATUS_END_PERIOD';
+        if(!isFin||!_db)return;
+        var ha=norm(home.team&&home.team.displayName||'');
+        var aa=norm(away.team&&away.team.displayName||'');
+        var m=MATCH_LIST.find(function(m){return m.team_a===ha&&m.team_b===aa;});
+        if(!m)return;
+        _db.ref('results/'+fbkey(mkey(m))).set({sa:parseInt(home.score||'0'),sb:parseInt(away.score||'0')});
+      });
+    }).catch(function(){});
+    fetchScores();fetchStandings();
+    var t1=setInterval(fetchScores,30000);
+    var t2=setInterval(fetchStandings,120000);
+    return function(){clearInterval(t1);clearInterval(t2);};
+  },[]);
+
+  return{espnEvents:espnEvents,scorers:topScorers,standings:standings,lastUp:lastUp};
+}
+
+// ── Main App ──────────────────────────────────────────────────────────────────
+function BolaoApp(){
+  var s1=useState({});      var results=s1[0],setResults=s1[1];
+  var s2=useState('ranking'); var tab=s2[0],setTab=s2[1];
+  var s3=useState('TODAY'); var rFilter=s3[0],setRFilter=s3[1];
+  var s4=useState('ALL');   var gFilter=s4[0],setGFilter=s4[1]; // guesses tab filter
+  var s9=useState('ok');    var dbSt=s9[0],setDbSt=s9[1];
+
+  var espn=useESPN();
+  var espnEvents=espn.espnEvents;
+  var scorers=espn.scorers;
+  var espnStandings=espn.standings;
+  var lastUp=espn.lastUp;
+
+  // Firebase sync
+  useEffect(function(){
+    if(!_db){setDbSt('error');return;}
+    _db.ref('results').on('value',function(s){setResults(s.val()||{});setDbSt('ok');},function(){setDbSt('error');});
+  },[]);
+
+  // Auto-save ESPN completed results to Firebase
+  useEffect(function(){
+    if(!_db)return;
+    espnEvents.forEach(function(ev){
+      // Save both finished and live scores so they persist
+      if(!ev.isFinal&&!ev.isLive&&!ev.isHalf&&ev.fullStatusName!=='STATUS_END_PERIOD'&&ev.fullStatusName!=='STATUS_FULL_TIME')return;
+      var m=MATCH_LIST.find(function(m){return m.team_a===ev.homeTeam&&m.team_b===ev.awayTeam;});
+      if(!m)return;
+      var fk=fbkey(mkey(m));
+      // Only overwrite Firebase with final scores (not live, to avoid overwriting with in-progress)
+      if(ev.isFinal){
+        _db.ref('results/'+fk).set({sa:ev.homeScore,sb:ev.awayScore});
+      }
+    });
+  },[espnEvents]);
+
+  // ESPN score cache — stored in state so React re-renders when scores change
+  var s_ec=useState({}); var espnScoreCache=s_ec[0],setEspnScoreCache=s_ec[1];
+  var espnCacheRef=React.useRef({});
+  React.useEffect(function(){
+    var changed=false;
+    espnEvents.forEach(function(ev){
+      if(!ev.isFinal&&!ev.isLive&&!ev.isHalf)return;
+      var m=MATCH_LIST.find(function(m){return m.team_a===ev.homeTeam&&m.team_b===ev.awayTeam;});
+      if(!m)return;
+      var fk=fbkey(mkey(m));
+      var prev=espnCacheRef.current[fk];
+      var next={sa:ev.homeScore,sb:ev.awayScore};
+      if(!prev||prev.sa!==next.sa||prev.sb!==next.sb){
+        espnCacheRef.current[fk]=next;
+        changed=true;
+      }
+    });
+    if(changed) setEspnScoreCache(Object.assign({},espnCacheRef.current));
+  },[espnEvents]);
+
+  // Merge Firebase + ESPN cache — re-renders when either changes
+  var merged=useMemo(function(){
+    return Object.assign({},results,espnScoreCache);
+  },[results,espnScoreCache]);
+
+  // Scores
+  var scores=useMemo(function(){
+    var t={};
+    RAW.forEach(function(p){t[p.name]={match:0,total:0};});
+    MATCH_LIST.forEach(function(m){
+      var real=merged[fbkey(mkey(m))];
+      if(!real||real.sa===null||real.sb===null)return;
+      RAW.forEach(function(p){var g=LOOKUP[p.name][mkey(m)];if(g)t[p.name].match+=calcPts(real,g);});
+    });
+    Object.keys(t).forEach(function(n){t[n].total=t[n].match;});
+    return t;
+  },[merged]);
+
+  var ranked=useMemo(function(){
+    return Object.entries(scores).sort(function(a,b){return b[1].total-a[1].total;}).map(function(x,i){return{rank:i+1,name:x[0],total:x[1].total,match:x[1].match};});
+  },[scores]);
+
+  var completedCount=useMemo(function(){
+    return MATCH_LIST.filter(function(m){var r=merged[fbkey(mkey(m))];return r&&r.sa!==null&&r.sb!==null;}).length;
+  },[merged]);
+
+  // Today
+  var todayStr=useMemo(function(){
+    var d=new Date();return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0');
+  },[]);
+
+
+
+
+  // Classify matches
+  var classifyMatch=function(m){
+    var ev=espnEvents.find(function(e){return e.homeTeam===m.team_a&&e.awayTeam===m.team_b;});
+    if(ev){
+      if(ev.isLive||ev.isHalf)return 'live';
+      if(ev.isFinal)return 'done';
+    }
+    var r=merged[fbkey(mkey(m))];
+    if(r&&r.sa!==null)return 'done';
+    return 'upcoming';
+  };
+
+  // Results tab filtered matches
+  var rMatches=useMemo(function(){
+    var all=MATCH_LIST;
+    if(rFilter==='TODAY') return all.filter(function(m){return m.date===todayStr;});
+    if(rFilter==='DONE')  return all.filter(function(m){return classifyMatch(m)==='done'||classifyMatch(m)==='live';}).reverse();
+    if(rFilter==='ALL')   return all;
+    return all.filter(function(m){return m.grupo===rFilter;});
+  },[rFilter,merged,espnEvents,todayStr]);
+
+  // Group by date for results display
+  var byDate=useMemo(function(){
+    var g={};
+    rMatches.forEach(function(m){if(!g[m.date])g[m.date]=[];g[m.date].push(m);});
+    return g;
+  },[rMatches]);
+
+  // Guesses tab matches
+  var gMatches=useMemo(function(){
+    var all=MATCH_LIST;
+    if(gFilter==='ALL') return all;
+    if(gFilter==='DONE') return all.filter(function(m){var s=classifyMatch(m);return s==='done'||s==='live';}).reverse();
+    return all.filter(function(m){return m.grupo===gFilter;});
+  },[gFilter,merged,espnEvents]);
+
+  // ESPN live/next
+  // Keep last known live event so it doesn't flicker when ESPN polls
+  var liveCache=React.useRef(null);
+  var currentLive=espnEvents.find(function(e){return e.isLive||e.isHalf;});
+  if(currentLive) liveCache.current=currentLive;
+  var liveNow=currentLive||liveCache.current;
+
+  var nextUp=espnEvents.find(function(e){return e.isPre;})||
+             MATCH_LIST.find(function(m){return classifyMatch(m)==='upcoming';});
+
+  // ── LIVE WIDGET (ESPN-style) ─────────────────────────────────────────────
+  function TeamBadge(name,logo,size){
+    var code=FLAG_CODES[name];
+    // Always use flagcdn w40 (guaranteed valid) scaled via CSS — matches reference image exactly
+    if(code){
+      return h('img',{
+        src:'https://flagcdn.com/w40/'+code+'.png',
+        style:{width:size+'px',height:Math.round(size*0.75)+'px',objectFit:'cover',borderRadius:3,display:'block'},
+        alt:name,
+        onError:function(e){
+          // Fallback to ESPN logo on error
+          if(logo&&logo.length>0){e.target.src=logo;e.target.style.height=size+'px';e.target.style.objectFit='contain';}
+          else{e.target.style.display='none';}
+        }
+      });
+    }
+    if(logo&&logo.length>0){
+      return h('img',{src:logo,style:{width:size+'px',height:size+'px',objectFit:'contain'},alt:name,onError:function(e){e.target.style.display='none';}});
+    }
+    return null;
+  }
+
+  function LiveCard(ev){
+    var isLv=ev.isLive||ev.isHalf;
+    var isHalf=ev.isHalf;
+    var isFin=ev.isFinal;
+    var statLabel=isHalf?'INTERVALO':isFin?'ENCERRADO':(ev.clock?ev.clock+"'":'AO VIVO');
+    var statColor=isLv||isHalf?'#22c55e':isFin?'#94a3b8':'#facc15';
+    return h('div',{className:'hdr-live',style:{
+      background:'linear-gradient(135deg,#0f1f3d 0%,#1a2d52 100%)',
+      border:'1px solid '+(isLv?'#22c55e40':'#ffffff15'),
+      borderRadius:14,padding:'12px 16px',flex:'1 1 260px',minWidth:220,maxWidth:420,
+      boxShadow:'0 4px 24px rgba(0,0,0,.4)'
+    }},
+      // Top bar: competition + status
+      h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}},
+        h('div',{style:{display:'flex',alignItems:'center',gap:6}},
+          h('img',{src:'https://a.espncdn.com/i/leaguelogos/soccer/500/4.png',
+            style:{width:16,height:16,objectFit:'contain'},alt:'FIFA'}),
+          h('span',{style:{fontSize:9,color:'#94a3b8',letterSpacing:1,textTransform:'uppercase',fontWeight:600}},
+            'Copa do Mundo FIFA 2026™')
+        ),
+        h('div',{style:{display:'flex',alignItems:'center',gap:5}},
+          isLv?h('span',{style:{width:7,height:7,borderRadius:'50%',background:'#22c55e',display:'inline-block',animation:'blink 1s infinite'}}):null,
+          h('span',{style:{fontSize:10,fontWeight:800,color:statColor,letterSpacing:.5}},statLabel)
+        )
+      ),
+      // Main score row
+      h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}},
+        // Home team
+        h('div',{style:{display:'flex',flexDirection:'column',alignItems:'center',gap:6,flex:1,minWidth:0}},
+          TeamBadge(ev.homeTeam,ev.homeLogo,40),
+          h('span',{style:{fontSize:11,color:ev.homeWin?'#fff':'#cbd5e1',textAlign:'center',lineHeight:1.3,
+            fontWeight:ev.homeWin?700:500,maxWidth:90,display:'block'}},ev.homeTeam)
+        ),
+        // Score block
+        h('div',{style:{textAlign:'center',minWidth:100}},
+          h('div',{style:{display:'flex',alignItems:'center',justifyContent:'center',gap:6}},
+            h('span',{style:{fontSize:34,fontWeight:900,color:ev.homeWin?'#facc15':'#f1f5f9',lineHeight:1,minWidth:36,textAlign:'center',
+              textShadow:ev.homeWin?'0 0 20px rgba(250,204,21,.4)':'none'}},ev.homeScore),
+            h('span',{style:{fontSize:18,color:'#475569',fontWeight:300,lineHeight:1,margin:'0 2px'}},'–'),
+            h('span',{style:{fontSize:34,fontWeight:900,color:ev.awayWin?'#facc15':'#f1f5f9',lineHeight:1,minWidth:36,textAlign:'center',
+              textShadow:ev.awayWin?'0 0 20px rgba(250,204,21,.4)':'none'}},ev.awayScore)
+          ),
+          h('div',{style:{fontSize:9,color:'#475569',marginTop:4,textTransform:'uppercase',letterSpacing:1}},'Fase de grupos')
+        ),
+        // Away team
+        h('div',{style:{display:'flex',flexDirection:'column',alignItems:'center',gap:6,flex:1,minWidth:0}},
+          TeamBadge(ev.awayTeam,ev.awayLogo,40),
+          h('span',{style:{fontSize:11,color:ev.awayWin?'#fff':'#cbd5e1',textAlign:'center',lineHeight:1.3,
+            fontWeight:ev.awayWin?700:500,maxWidth:90,display:'block'}},ev.awayTeam)
+        )
+      )
+    );
+  }
+
+  function NextCard(m){
+    var ev=espnEvents.find(function(e){return e.homeTeam===m.team_a&&e.awayTeam===m.team_b&&e.isPre;})||null;
+    var ta=(ev&&ev.homeTeam)||m.team_a||'';
+    var tb=(ev&&ev.awayTeam)||m.team_b||'';
+    var schItem=SCHEDULE.find(function(s){return s.ta===ta&&s.tb===tb;});
+    var dateStr='',timeStr='';
+    if(schItem){dateStr=schItem.date;timeStr=schItem.time;}
+    else if(ev&&ev.date){var d=new Date(ev.date);dateStr=String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0');timeStr=d.getHours()+'h';}
+    else{dateStr=m.date||'';timeStr=m.time||'';}
+    return h('div',{className:'hdr-next',style:{
+      background:'linear-gradient(135deg,#0f1f3d 0%,#1a2d52 100%)',
+      border:'1px solid #ffffff15',borderRadius:14,padding:'12px 16px',
+      flex:'1 1 260px',minWidth:220,maxWidth:420,boxShadow:'0 4px 24px rgba(0,0,0,.4)'
+    }},
+      // Top bar: same as LiveCard
+      h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}},
+        h('div',{style:{display:'flex',alignItems:'center',gap:6}},
+          h('img',{src:'https://a.espncdn.com/i/leaguelogos/soccer/500/4.png',style:{width:16,height:16,objectFit:'contain'},alt:'FIFA'}),
+          h('span',{style:{fontSize:9,color:'#94a3b8',letterSpacing:1,textTransform:'uppercase',fontWeight:600}},
+            'Copa do Mundo FIFA 2026™')
+        ),
+        h('span',{style:{fontSize:10,fontWeight:800,color:'#facc15',letterSpacing:.5}},timeStr+' · '+dateStr)
+      ),
+      // Team row — same layout as LiveCard
+      h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}},
+        h('div',{style:{display:'flex',flexDirection:'column',alignItems:'center',gap:6,flex:1,minWidth:0}},
+          TeamBadge(ta,(ev&&ev.homeLogo)||'',40),
+          h('span',{style:{fontSize:11,color:'#cbd5e1',textAlign:'center',lineHeight:1.3,
+            fontWeight:500,maxWidth:90,display:'block'}},ta)
+        ),
+        h('div',{style:{textAlign:'center',minWidth:80}},
+          h('div',{style:{display:'flex',alignItems:'center',justifyContent:'center',gap:6}},
+            h('span',{style:{fontSize:28,fontWeight:700,color:'#475569',lineHeight:1,minWidth:30,textAlign:'center'}},'–'),
+            h('span',{style:{fontSize:18,color:'#334155',fontWeight:300,lineHeight:1,margin:'0 2px'}},'vs'),
+            h('span',{style:{fontSize:28,fontWeight:700,color:'#475569',lineHeight:1,minWidth:30,textAlign:'center'}},'–')
+          ),
+          h('div',{style:{fontSize:9,color:'#475569',marginTop:4,textTransform:'uppercase',letterSpacing:1}},'Próximo jogo')
+        ),
+        h('div',{style:{display:'flex',flexDirection:'column',alignItems:'center',gap:6,flex:1,minWidth:0}},
+          TeamBadge(tb,(ev&&ev.awayLogo)||'',40),
+          h('span',{style:{fontSize:11,color:'#cbd5e1',textAlign:'center',lineHeight:1.3,
+            fontWeight:500,maxWidth:90,display:'block'}},tb)
+        )
+      )
+    );
+  }
+
+
+  // ── RESULTS TAB ──────────────────────────────────────────────────────────
+  function MatchRow(m){
+    var k=mkey(m),fk=fbkey(k);
+    var r=merged[fk]||{sa:null,sb:null};
+    var hasR=r.sa!==null&&r.sb!==null;
+    var ev=espnEvents.find(function(e){return e.homeTeam===m.team_a&&e.awayTeam===m.team_b;});
+    var isLv=ev&&(ev.isLive||ev.isHalf);
+    var isFin=ev&&ev.isFinal;
+    var cls='mrow'+(isLv?' live':isFin?' done':'');
+    return h('div',{key:k,className:cls},
+      // Time + group
+      h('div',{style:{display:'flex',flexDirection:'column',alignItems:'center',minWidth:48}},
+        h('span',{style:{fontSize:12,fontWeight:700,color:isLv?'#22c55e':'#facc15'}},m.time),
+        h('span',{style:{fontSize:9,background:'#0d1b34',color:'#94a3b8',padding:'1px 5px',borderRadius:8,fontWeight:700,marginTop:2}},'Grupo '+m.grupo),
+        isLv?h('span',{style:{fontSize:8,color:'#22c55e',fontWeight:700,animation:'blink 1s infinite',marginTop:2}},'🔴 AO VIVO'):null
+      ),
+      // Teams + score
+      h('div',{style:{flex:1,display:'flex',alignItems:'center',gap:6,minWidth:210,flexWrap:'wrap'}},
+        h('span',{style:{flex:1,textAlign:'right',fontWeight:600,fontSize:13,display:'flex',alignItems:'center',justifyContent:'flex-end',gap:5}},m.team_a,' ',flagImg(m.team_a,20)),
+        h('div',{style:{display:'flex',alignItems:'center',gap:4}},
+          isLv?h('div',{style:{display:'flex',alignItems:'center',gap:6,padding:'2px 6px',background:'#1c1a00',borderRadius:8,border:'1px solid #facc15'}},
+            h('span',{style:{fontSize:22,fontWeight:800,color:'#facc15',minWidth:24,textAlign:'center'}},ev.homeScore),
+            h('span',{style:{color:'#6b7280',fontSize:12}},'×'),
+            h('span',{style:{fontSize:22,fontWeight:800,color:'#facc15',minWidth:24,textAlign:'center'}},ev.awayScore)
+          ):isFin?h('div',{style:{display:'flex',alignItems:'center',gap:6,padding:'2px 6px',background:'#16243e',borderRadius:8}},
+            h('span',{style:{fontSize:20,fontWeight:800,color:'#facc15',minWidth:22,textAlign:'center'}},ev.homeScore),
+            h('span',{style:{color:'#6b7280',fontSize:12}},'×'),
+            h('span',{style:{fontSize:20,fontWeight:800,color:'#facc15',minWidth:22,textAlign:'center'}},ev.awayScore)
+          ):h('div',{style:{display:'flex',alignItems:'center',gap:6,padding:'3px 10px',background:'#16243e',borderRadius:8}},
+            h('span',{style:{fontSize:16,fontWeight:700,color:'#64748b',minWidth:20,textAlign:'center'}},r.sa===null?'–':r.sa),
+            h('span',{style:{color:'#4a5568',fontSize:11}},'×'),
+            h('span',{style:{fontSize:16,fontWeight:700,color:'#64748b',minWidth:20,textAlign:'center'}},r.sb===null?'–':r.sb)
+          )
+        ),
+        h('span',{style:{flex:1,fontWeight:600,fontSize:13,display:'flex',alignItems:'center',gap:5}},flagImg(m.team_b,20),' ',m.team_b)
+      ),
+      // Points dots
+      hasR?h('div',{style:{display:'flex',gap:3,flexWrap:'wrap',maxWidth:170}},
+        RAW.map(function(p){
+          var g=LOOKUP[p.name][k];
+          var pts=calcPts(r,g);
+          return h('span',{key:p.name,title:p.name+': '+(g?g.sa:'?')+'×'+(g?g.sb:'?')+' → '+pts+'pts',style:{width:15,height:15,borderRadius:'50%',background:PTS_COL[pts],display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:7,fontWeight:700,color:'#fff',cursor:'default'}},pts);
+        })
+      ):null
+    );
+  }
+
+  var rFilters=['TODAY','DONE','ALL',...GROUPS];
+  var resultsTab=h('div',null,
+
+    h('div',{style:{display:'flex',gap:6,flexWrap:'wrap',marginBottom:16}},
+      rFilters.map(function(g){
+        var lbl=g==='TODAY'?'📅 Hoje':g==='DONE'?'✅ Concluídos':g==='ALL'?'Todos':'Grupo '+g;
+        return h('button',{key:g,className:'fbtn'+(rFilter===g?' active':''),onClick:function(){setRFilter(g);}},lbl);
+      })
+    ),
+    rMatches.length===0?h('div',{style:{textAlign:'center',color:'#64748b',padding:'40px 0',fontSize:14}},
+      rFilter==='TODAY'?'Nenhum jogo hoje 📅':rFilter==='DONE'?'Nenhum jogo concluído ainda':'Nenhum jogo encontrado'
+    ):null,
+    Object.entries(byDate).map(function(entry){
+      var date=entry[0],matches=entry[1];
+      return h('div',{key:date,style:{marginBottom:20}},
+        h('div',{style:{fontSize:11,fontWeight:700,color:'#facc15',textTransform:'uppercase',letterSpacing:2,marginBottom:8,paddingBottom:5,borderBottom:'1px solid #243356'}},'📅 '+date),
+        matches.map(function(m){return MatchRow(m);})
+      );
+    }),
+    h('div',{style:{padding:'8px 12px',background:'#16243e',borderRadius:8,fontSize:11,color:'#94a3b8',marginTop:4}},
+      h('strong',{style:{color:'#facc15'}},'Legenda: '),
+      [['#22c55e','5pts','Placar exato'],['#3b82f6','4pts','Vencedor+saldo'],['#f59e0b','2pts','Só vencedor'],['#ef4444','0pts','Errou']].map(function(x){
+        return h('span',{key:x[1],style:{marginLeft:10}},h('span',{style:{display:'inline-block',width:8,height:8,borderRadius:'50%',background:x[0],marginRight:3,verticalAlign:'middle'}}),h('strong',null,x[1]),' — ',x[2]);
+      })
+    )
+  );
+
+  // ── RANKING TAB ──────────────────────────────────────────────────────────
+  var rankingTab=h('div',null,
+    h('div',{style:{marginBottom:12,color:'#94a3b8',fontSize:13}},'Ranking atualizado em tempo real'),
+    ranked.map(function(r,i){
+      var medals=['🥇','🥈','🥉'],isTop=i<3;
+      return h('div',{key:r.name,style:{background:isTop?'linear-gradient(90deg,#1a3a6a,#1a2d52)':'#1a2d52',borderRadius:10,padding:'11px 16px',border:isTop?'1px solid #3a6ab0':'1px solid #243356',display:'flex',alignItems:'center',gap:12,marginBottom:7}},
+        h('span',{style:{fontSize:isTop?22:13,width:28,textAlign:'center',fontWeight:700,color:isTop?'#facc15':'#64748b'}},medals[i]||r.rank+'°'),
+        h('div',{style:{flex:1}},
+          h('div',{style:{fontWeight:700,fontSize:14}},r.name),
+          i===0?h('div',{style:{fontSize:11,color:'#facc15',marginTop:2,fontWeight:700}},'🏆 Prêmio: R$650,00'):
+          i===1?h('div',{style:{fontSize:11,color:'#94a3b8',marginTop:2,fontWeight:600}},'🥈 Prêmio: R$300,00'):
+          i===2?h('div',{style:{fontSize:11,color:'#cd7f32',marginTop:2,fontWeight:600}},'🥉 Prêmio: R$100,00'):null
+        ),
+        h('div',{style:{textAlign:'right',minWidth:52}},h('div',{style:{fontSize:22,fontWeight:800,color:'#facc15'}},r.total),h('div',{style:{fontSize:10,color:'#64748b'}},'pts')),
+        h('div',{style:{width:80,background:'#0d1b34',borderRadius:6,height:6,overflow:'hidden'}},h('div',{style:{width:Math.min(100,(r.total/(MATCH_LIST.length*5))*100)+'%',height:'100%',background:'linear-gradient(90deg,#facc15,#f59e0b)',borderRadius:6}}))
+      );
+    })
+  );
+
+  // ── CLASSIFICATION TAB ───────────────────────────────────────────────────
+  function StandingsTable(g,rows){
+    return h('div',{key:g,style:{background:'#1a2d52',borderRadius:10,overflow:'hidden',border:'1px solid #243356'}},
+      h('div',{style:{background:'#16243e',padding:'8px 14px',fontWeight:800,color:'#facc15',fontSize:14,borderBottom:'1px solid #243356'}},'Grupo '+g),
+      h('table',{style:{width:'100%',borderCollapse:'collapse',fontSize:12}},
+        h('thead',null,h('tr',{style:{background:'#0d1b34'}},
+          ['Seleção','J','V','E','D','GP','GC','Pts'].map(function(hd,i){return h('th',{key:hd,style:{padding:'5px '+(i===0?'10px':'5px'),textAlign:i===0?'left':'center',color:'#64748b',fontWeight:600,minWidth:i===0?undefined:20}},hd);})
+        )),
+        h('tbody',null,rows.map(function(t,i){
+          return h('tr',{key:i,style:{background:i%2===0?'#1a2d52':'#16243e',borderTop:'1px solid #1e3050'}},
+            h('td',{style:{padding:'6px 10px',fontWeight:i<2?700:400,color:i<2?'#fff':'#94a3b8',whiteSpace:'nowrap'}},
+              h('span',{style:{marginRight:5,display:'inline-flex',alignItems:'center',verticalAlign:'middle'}},t.logo?h('img',{src:t.logo,style:{width:20,height:15,objectFit:'cover',borderRadius:2}}):flagImg(t.team,20)),
+              t.team,
+              i<2?h('span',{style:{marginLeft:5,fontSize:9,background:'#052e16',color:'#22c55e',padding:'1px 5px',borderRadius:8,fontWeight:700}},'✓'):null
+            ),
+            [t.played||t.j,t.wins||t.v,t.draws||t.e,t.losses||t.d,t.gf||t.gp,t.ga||t.gc,t.pts].map(function(v,j){
+              return h('td',{key:j,style:{padding:'6px 5px',textAlign:'center',color:j===6?'#facc15':'#94a3b8',fontWeight:j===6?700:400}},v||0);
+            })
+          );
+        }))
+      )
+    );
+  }
+
+  var classTab=h('div',null,
+    h('div',{style:{marginBottom:12,fontSize:12,color:'#94a3b8',display:'flex',alignItems:'center',gap:6}},
+      h('span',{style:{width:8,height:8,borderRadius:'50%',background:'#ef4444',display:'inline-block',animation:'pulse 1.5s infinite'}}),
+      'Atualizado em tempo real',
+      lastUp?h('span',{style:{marginLeft:8,color:'#4a6090'}},'• '+lastUp.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})):null
+    ),
+    h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:14}},
+      GROUPS.map(function(g){
+        if(Object.keys(espnStandings).length>0&&espnStandings[g]&&espnStandings[g].length>0)
+          return StandingsTable(g,espnStandings[g]);
+        // fallback: compute
+        var teams=TEAMS_BY_GROUP[g];
+        var rows=teams.map(function(team){
+          var j=0,v=0,e=0,d=0,gp=0,gc=0;
+          MATCH_LIST.filter(function(m){return m.grupo===g&&(m.team_a===team||m.team_b===team);}).forEach(function(m){
+            var r=merged[fbkey(mkey(m))];
+            if(!r||r.sa===null)return;j++;
+            var isH=m.team_a===team,gs=isH?r.sa:r.sb,gc2=isH?r.sb:r.sa;
+            gp+=gs;gc+=gc2;if(gs>gc2)v++;else if(gs===gc2)e++;else d++;
+          });
+          return{team:team,logo:'',j:j,v:v,e:e,d:d,gp:gp,gc:gc,pts:v*3+e};
+        }).sort(function(a,b){return(b.pts-a.pts)||((b.gp-b.gc)-(a.gp-a.gc))||b.gp-a.gp;});
+        return StandingsTable(g,rows);
+      })
+    )
+  );
+
+  // ── GUESSES TAB ─────────────────────────────────────────────────────────
+  var s_gst=useState('today'); var gSubTab=s_gst[0],setGSubTab=s_gst[1];
+  var s_gf2=useState('ALL');   var gFilter2=s_gf2[0],setGFilter2=s_gf2[1];
+
+  // Matches for "Palpites do Dia"
+  var todayGuessMatches=useMemo(function(){
+    return MATCH_LIST.filter(function(m){return m.date===todayStr;});
+  },[todayStr]);
+
+  // Matches for "Todos" — all matches grouped by date
+  var allGuessMatches=useMemo(function(){
+    if(gFilter2==='ALL') return MATCH_LIST;
+    return MATCH_LIST.filter(function(m){return m.grupo===gFilter2;});
+  },[gFilter2]);
+
+  function GuessMatchCard(m){
+    var k=mkey(m),fk=fbkey(k);
+    var real=merged[fk];
+    var hasReal=real&&real.sa!==null&&real.sb!==null;
+    var ev=espnEvents.find(function(e){return e.homeTeam===m.team_a&&e.awayTeam===m.team_b;});
+    var isLv=ev&&(ev.isLive||ev.isHalf);
+    return h('div',{key:k,style:{background:'#1a2d52',borderRadius:12,overflow:'hidden',border:'1px solid '+(isLv?'#22c55e':'#243356'),marginBottom:14}},
+      h('div',{style:{background:'#16243e',padding:'9px 14px',display:'flex',alignItems:'center',gap:8,borderBottom:'1px solid #243356',flexWrap:'wrap'}},
+        h('div',{style:{display:'flex',flexDirection:'column',alignItems:'center',minWidth:38}},
+          h('span',{style:{fontSize:11,fontWeight:700,color:isLv?'#22c55e':'#facc15'}},m.time),
+          h('span',{style:{fontSize:9,color:'#64748b'}},m.date)
+        ),
+        h('span',{style:{fontSize:9,background:'#0d1b34',color:'#facc15',padding:'1px 5px',borderRadius:8,fontWeight:700}},'Grupo '+m.grupo),
+        isLv?h('span',{style:{fontSize:9,color:'#22c55e',fontWeight:700,animation:'blink 1s infinite'}},'🔴 AO VIVO'):null,
+        h('span',{style:{fontWeight:700,fontSize:13,flex:1,display:'flex',alignItems:'center',gap:4,flexWrap:'wrap'}},
+          flagImg(m.team_a,18),' ',m.team_a,'  ×  ',m.team_b,' ',flagImg(m.team_b,18)
+        ),
+        isLv?h('span',{style:{background:'#1c1a00',border:'1px solid #facc15',borderRadius:8,padding:'2px 10px',fontSize:13,fontWeight:800,color:'#facc15'}},ev.homeScore+' × '+ev.awayScore)
+        :hasReal?h('span',{style:{background:'#22c55e22',border:'1px solid #22c55e',borderRadius:8,padding:'2px 10px',fontSize:13,fontWeight:800,color:'#22c55e'}},real.sa+' × '+real.sb)
+        :h('span',{style:{fontSize:11,color:'#64748b'}},'sem resultado')
+      ),
+      h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(148px,1fr))',gap:1,background:'#243356'}},
+        RAW.map(function(p){
+          var g=LOOKUP[p.name][k];
+          var pts=hasReal||isLv?calcPts(real||{sa:ev&&ev.homeScore,sb:ev&&ev.awayScore},g):null;
+          var bg=pts!==null?PTS_BG[pts]:'#1a2d52';
+          var bc=pts!==null?PTS_COL[pts]:'#1a2d52';
+          var tc=pts!==null?PTS_COL[pts]:'#94a3b8';
+          return h('div',{key:p.name,style:{background:bg,padding:'8px 11px',borderLeft:'3px solid '+bc}},
+            h('div',{style:{fontSize:10,color:'#94a3b8',marginBottom:2,fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},p.name),
+            h('div',{style:{display:'flex',alignItems:'center',gap:4}},
+              h('span',{style:{fontSize:16,fontWeight:800,color:'#facc15'}},(g&&g.sa!==null?g.sa:'?'),' ',h('span',{style:{color:'#64748b',fontSize:12}},'×'),' ',(g&&g.sb!==null?g.sb:'?')),
+              pts!==null?h('span',{style:{marginLeft:'auto',fontSize:10,fontWeight:800,color:tc,border:'1px solid '+bc,borderRadius:5,padding:'1px 4px'}},pts+'pts'):null
+            )
+          );
+        })
+      )
+    );
+  }
+
+  // Guesses by date for "Todos"
+  var allGuessesByDate=useMemo(function(){
+    var g={};
+    allGuessMatches.forEach(function(m){
+      if(!g[m.date])g[m.date]=[];
+      g[m.date].push(m);
+    });
+    return g;
+  },[allGuessMatches]);
+
+  var guessesTab=h('div',null,
+    // Sub-tab buttons
+    h('div',{style:{display:'flex',gap:0,marginBottom:16,background:'#16243e',borderRadius:10,padding:4,width:'fit-content'}},
+      h('button',{
+        onClick:function(){setGSubTab('today');},
+        style:{padding:'8px 20px',borderRadius:8,border:'none',cursor:'pointer',fontFamily:'inherit',
+          fontWeight:700,fontSize:13,transition:'all .2s',
+          background:gSubTab==='today'?'#facc15':'transparent',
+          color:gSubTab==='today'?'#0d1b34':'#94a3b8'}
+      },'📅 Palpites do Dia'),
+      h('button',{
+        onClick:function(){setGSubTab('all');},
+        style:{padding:'8px 20px',borderRadius:8,border:'none',cursor:'pointer',fontFamily:'inherit',
+          fontWeight:700,fontSize:13,transition:'all .2s',
+          background:gSubTab==='all'?'#facc15':'transparent',
+          color:gSubTab==='all'?'#0d1b34':'#94a3b8'}
+      },'🗂 Todos')
+    ),
+
+    // SUB-TAB: Palpites do Dia
+    gSubTab==='today'?h('div',null,
+      todayGuessMatches.length===0
+        ?h('div',{style:{textAlign:'center',color:'#64748b',padding:'40px 0',fontSize:14}},'Nenhum jogo hoje 📅')
+        :todayGuessMatches.map(function(m){return GuessMatchCard(m);})
+    ):null,
+
+    // SUB-TAB: Todos (grouped by date with group filter)
+    gSubTab==='all'?h('div',null,
+      // Group filter
+      h('div',{style:{display:'flex',gap:6,flexWrap:'wrap',marginBottom:16}},
+        ['ALL',...GROUPS].map(function(g){
+          return h('button',{key:g,className:'fbtn'+(gFilter2===g?' active':''),
+            onClick:function(){setGFilter2(g);}},
+            g==='ALL'?'Todos':'Grupo '+g
+          );
+        })
+      ),
+      // Matches by date
+      Object.entries(allGuessesByDate).map(function(entry){
+        var date=entry[0],matches=entry[1];
+        return h('div',{key:date,style:{marginBottom:20}},
+          h('div',{style:{fontSize:11,fontWeight:700,color:'#facc15',textTransform:'uppercase',
+            letterSpacing:2,marginBottom:8,paddingBottom:5,borderBottom:'1px solid #243356'}},'📅 '+date),
+          matches.map(function(m){return GuessMatchCard(m);})
+        );
+      })
+    ):null
+  );
+
+
+  // ── HEADER ──────────────────────────────────────────────────────────────
+  var header=h('div',{style:{background:'linear-gradient(135deg,#1a3a8a 0%,#0d1b34 100%)',borderBottom:'2px solid #facc15'}},
+    h('div',{style:{maxWidth:1200,margin:'0 auto',padding:'14px 20px 0'}},
+      h('div',{className:'hdr-top',style:{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:12,flexWrap:'wrap'}},
+
+        // Left: title
+        h('div',{className:'hdr-left',style:{minWidth:160}},
+          h('div',{style:{fontSize:9,color:'#facc15',letterSpacing:3,textTransform:'uppercase',marginBottom:2}},'Copa do Mundo 2026'),
+          h('div',{style:{fontSize:20,fontWeight:800,marginBottom:2}},'🏆 Bolão — Italy'),
+          h('div',{style:{fontSize:11,color:'#94a3b8'}},completedCount+'/'+MATCH_LIST.length+' jogos  •  '+RAW.length+' participantes'),
+          dbSt==='error'?h('div',{style:{fontSize:10,color:'#fca5a5',marginTop:4}},'⚠️ Sem conexão'):null
+        ),
+
+        // Center: LIVE on top (mobile stacks vertically), NEXT below
+        h('div',{className:'hdr-center',style:{flex:1,display:'flex',flexDirection:'column',gap:8,alignItems:'stretch',minWidth:260,maxWidth:750}},
+          h('div',{style:{display:'flex',gap:8,flexWrap:'wrap',justifyContent:'center'}},
+            liveNow?LiveCard(liveNow):null,
+            nextUp?NextCard(nextUp):null,
+            !liveNow&&!nextUp?h('div',{style:{fontSize:13,color:'#64748b',padding:'20px',textAlign:'center'}},'🏆 Fase de grupos concluída'):null
+          )
+        ),
+
+        // Right: scorers
+        h('div',{className:'hdr-right',style:{minWidth:185}},
+          h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}},
+            h('span',{style:{fontSize:10,color:'#facc15',fontWeight:700,letterSpacing:1}},'⚽ ARTILHEIROS'),
+            lastUp?h('span',{style:{fontSize:9,color:'#4a6090'}},lastUp.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})):null
+          ),
+          scorers.length>0?
+            scorers.map(function(s,i){
+              return h('div',{key:i,style:{display:'flex',alignItems:'center',gap:6,fontSize:12,marginBottom:4,padding:'4px 6px',background:i===0?'#16243e':'transparent',borderRadius:5}},
+                h('span',{style:{color:'#facc15',fontWeight:700,minWidth:14,fontSize:11}},i+1+'.'),
+                h('div',{style:{flex:1,minWidth:0}},
+                  h('div',{style:{color:'#e2e8f0',fontWeight:600,fontSize:11,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},
+                    s.name,
+                    h('span',{style:{color:'#94a3b8',fontWeight:400,fontSize:10,marginLeft:4}},s.team?'('+s.team.toUpperCase()+')':'')
+                  )
+                ),
+                h('span',{style:{color:'#facc15',fontWeight:800,fontSize:13,minWidth:20,textAlign:'right'}},s.goals+'⚽')
+              );
+            })
+          :h('div',{style:{fontSize:11,color:'#4a6090',padding:'4px 0'}},'Aguardando jogos...'),
+
+        )
+      ),
+
+      // LEGEND + TABS
+      h('div',{style:{padding:'8px 0 6px',display:'flex',flexWrap:'wrap',gap:6,alignItems:'center',justifyContent:'center',borderTop:'1px solid #16243e'}},
+        h('span',{style:{fontSize:10,color:'#64748b',marginRight:2,fontWeight:600,letterSpacing:.5}},'PONTUAÇÃO:'),
+        [['#22c55e','5pts','Placar exato'],['#3b82f6','4pts','Vencedor+saldo'],['#f59e0b','2pts','Só vencedor'],['#ef4444','0pts','Errou']].map(function(leg,li){
+          return h('div',{key:li,style:{display:'flex',alignItems:'center',gap:4,padding:'2px 8px',background:'#16243e',borderRadius:20,border:'1px solid #1e3050'}},
+            h('span',{style:{width:7,height:7,borderRadius:'50%',background:leg[0],display:'inline-block',flexShrink:0}}),
+            h('span',{style:{fontSize:10,color:leg[0],fontWeight:700}},leg[1]),
+            h('span',{style:{fontSize:10,color:'#64748b'}},leg[2])
+          );
+        })
+      ),
+      h('div',{style:{display:'flex',overflowX:'auto',borderTop:'1px solid #16243e',marginTop:0,paddingTop:0}},
+        [['ranking','🏅 Ranking'],['guesses','👀 Palpites'],['results','⚽ Resultados'],['groups','🌍 Grupos']].map(function(t){
+          return h('button',{key:t[0],className:'tab-btn'+(tab===t[0]?' active':''),onClick:function(){setTab(t[0]);}},t[1]);
+        })
+      )
+    )
+  );
+
+  var modal=null;
+
+  return h('div',{style:{fontFamily:"'Segoe UI',system-ui,sans-serif",background:'#0d1b34',minHeight:'100vh',color:'#fff',paddingBottom:40}},
+    modal,header,
+    h('div',{style:{maxWidth:1200,margin:'0 auto',padding:'18px 16px'}},
+      tab==='ranking'?rankingTab:tab==='guesses'?guessesTab:tab==='results'?resultsTab:classTab
+    )
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(BolaoApp));
+</script>
+</body>
+</html>
