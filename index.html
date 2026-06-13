@@ -30,6 +30,14 @@ select option{background:#0d1b34;color:#fff}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 @keyframes spin{to{transform:rotate(360deg)}}
+@media(max-width:700px){
+  .hdr-top{flex-direction:column !important;}
+  .hdr-center{max-width:100% !important;width:100% !important;}
+  .hdr-center>div{flex-direction:column !important;}
+  .hdr-live,.hdr-next{max-width:100% !important;flex:1 1 100% !important;min-width:0 !important;}
+  .hdr-right{width:100% !important;min-width:0 !important;}
+  .hdr-left{width:100% !important;}
+}
 </style>
 </head>
 <body>
@@ -228,7 +236,13 @@ function useESPN(){
   var s5=useState({});   var goalMap=s5[0],setGoalMap=s5[1]; // name->goals
 
   var fetchScores=useCallback(function(){
-    fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?limit=100&dates=20260611-20260627')
+    // Fetch all group stage matches with a broad date range
+    var today=new Date();
+    var dd=String(today.getDate()).padStart(2,'0');
+    var mm=String(today.getMonth()+1).padStart(2,'0');
+    var yyyy=today.getFullYear();
+    var todayStr=yyyy+mm+dd;
+    fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?limit=100&dates=20260611-'+todayStr)
     .then(function(r){return r.json();})
     .then(function(d){
       var gmap={};
@@ -269,7 +283,7 @@ function useESPN(){
           period:(comp.status&&comp.status.period)||0,
           isLive:sn==='STATUS_IN_PROGRESS',
           isHalf:sn==='STATUS_HALFTIME',
-          isFinal:sn==='STATUS_FINAL',
+          isFinal:sn==='STATUS_FINAL'||sn==='STATUS_FULL_TIME'||sn==='STATUS_END_PERIOD',
           isPre:sn==='STATUS_SCHEDULED',
           statusDetail:st.shortDetail||'',
           date:e.date||''
@@ -311,6 +325,27 @@ function useESPN(){
   },[goalMap]);
 
   useEffect(function(){
+    // Immediate fetch of all group stage results (wide date range)
+    fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?limit=100&dates=20260611-20260627')
+    .then(function(r){return r.json();})
+    .then(function(d){
+      // Process all events from this full-range fetch
+      var allEvts=(d.events||[]);
+      allEvts.forEach(function(e){
+        var comp=(e.competitions||[])[0]||{};
+        var comps=comp.competitors||[];
+        var home=comps.find(function(t){return t.homeAway==='home';})||comps[0]||{};
+        var away=comps.find(function(t){return t.homeAway==='away';})||comps[1]||{};
+        var st=((comp.status||{}).type||{}).name||'';
+        var isFin=st==='STATUS_FINAL'||st==='STATUS_FULL_TIME'||st==='STATUS_END_PERIOD';
+        if(!isFin||!_db)return;
+        var ha=norm(home.team&&home.team.displayName||'');
+        var aa=norm(away.team&&away.team.displayName||'');
+        var m=MATCH_LIST.find(function(m){return m.team_a===ha&&m.team_b===aa;});
+        if(!m)return;
+        _db.ref('results/'+fbkey(mkey(m))).set({sa:parseInt(home.score||'0'),sb:parseInt(away.score||'0')});
+      });
+    }).catch(function(){});
     fetchScores();fetchStandings();
     var t1=setInterval(fetchScores,30000);
     var t2=setInterval(fetchStandings,120000);
@@ -340,33 +375,46 @@ function BolaoApp(){
     _db.ref('results').on('value',function(s){setResults(s.val()||{});setDbSt('ok');},function(){setDbSt('error');});
   },[]);
 
-  // Auto-save ESPN finals to Firebase (no admin required)
+  // Auto-save ESPN completed results to Firebase
   useEffect(function(){
     if(!_db)return;
     espnEvents.forEach(function(ev){
-      if(!ev.isFinal)return;
+      // Save both finished and live scores so they persist
+      if(!ev.isFinal&&!ev.isLive&&!ev.isHalf&&ev.fullStatusName!=='STATUS_END_PERIOD'&&ev.fullStatusName!=='STATUS_FULL_TIME')return;
       var m=MATCH_LIST.find(function(m){return m.team_a===ev.homeTeam&&m.team_b===ev.awayTeam;});
       if(!m)return;
-      _db.ref('results/'+fbkey(mkey(m))).set({sa:ev.homeScore,sb:ev.awayScore});
+      var fk=fbkey(mkey(m));
+      // Only overwrite Firebase with final scores (not live, to avoid overwriting with in-progress)
+      if(ev.isFinal){
+        _db.ref('results/'+fk).set({sa:ev.homeScore,sb:ev.awayScore});
+      }
     });
   },[espnEvents]);
 
-  // Keep a stable cache of ESPN scores — never go back to zero
-  var espnCache=React.useRef({});
+  // ESPN score cache — stored in state so React re-renders when scores change
+  var s_ec=useState({}); var espnScoreCache=s_ec[0],setEspnScoreCache=s_ec[1];
+  var espnCacheRef=React.useRef({});
   React.useEffect(function(){
+    var changed=false;
     espnEvents.forEach(function(ev){
       if(!ev.isFinal&&!ev.isLive&&!ev.isHalf)return;
       var m=MATCH_LIST.find(function(m){return m.team_a===ev.homeTeam&&m.team_b===ev.awayTeam;});
       if(!m)return;
-      espnCache.current[fbkey(mkey(m))]={sa:ev.homeScore,sb:ev.awayScore};
+      var fk=fbkey(mkey(m));
+      var prev=espnCacheRef.current[fk];
+      var next={sa:ev.homeScore,sb:ev.awayScore};
+      if(!prev||prev.sa!==next.sa||prev.sb!==next.sb){
+        espnCacheRef.current[fk]=next;
+        changed=true;
+      }
     });
+    if(changed) setEspnScoreCache(Object.assign({},espnCacheRef.current));
   },[espnEvents]);
 
-  // Merge Firebase + ESPN cache (cache never clears between polls)
+  // Merge Firebase + ESPN cache — re-renders when either changes
   var merged=useMemo(function(){
-    var r=Object.assign({},results,espnCache.current);
-    return r;
-  },[results,espnEvents]);
+    return Object.assign({},results,espnScoreCache);
+  },[results,espnScoreCache]);
 
   // Scores
   var scores=useMemo(function(){
@@ -464,10 +512,10 @@ function BolaoApp(){
     var isFin=ev.isFinal;
     var statLabel=isHalf?'INTERVALO':isFin?'ENCERRADO':(ev.clock?ev.clock+"'":'AO VIVO');
     var statColor=isLv||isHalf?'#22c55e':isFin?'#94a3b8':'#facc15';
-    return h('div',{style:{
+    return h('div',{className:'hdr-live',style:{
       background:'linear-gradient(135deg,#0f1f3d 0%,#1a2d52 100%)',
       border:'1px solid '+(isLv?'#22c55e40':'#ffffff15'),
-      borderRadius:14,padding:'12px 16px',flex:1,minWidth:240,maxWidth:400,
+      borderRadius:14,padding:'12px 16px',flex:'1 1 260px',minWidth:220,maxWidth:420,
       boxShadow:'0 4px 24px rgba(0,0,0,.4)'
     }},
       // Top bar: competition + status
@@ -521,10 +569,10 @@ function BolaoApp(){
     if(schItem){dateStr=schItem.date;timeStr=schItem.time;}
     else if(ev&&ev.date){var d=new Date(ev.date);dateStr=String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0');timeStr=d.getHours()+'h';}
     else{dateStr=m.date||'';timeStr=m.time||'';}
-    return h('div',{style:{
+    return h('div',{className:'hdr-next',style:{
       background:'linear-gradient(135deg,#0f1f3d 0%,#1a2d52 100%)',
       border:'1px solid #ffffff15',borderRadius:14,padding:'12px 16px',
-      flex:1,minWidth:240,maxWidth:400,boxShadow:'0 4px 24px rgba(0,0,0,.4)'
+      flex:'1 1 260px',minWidth:220,maxWidth:420,boxShadow:'0 4px 24px rgba(0,0,0,.4)'
     }},
       // Top bar: same as LiveCard
       h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}},
@@ -573,7 +621,7 @@ function BolaoApp(){
       // Time + group
       h('div',{style:{display:'flex',flexDirection:'column',alignItems:'center',minWidth:48}},
         h('span',{style:{fontSize:12,fontWeight:700,color:isLv?'#22c55e':'#facc15'}},m.time),
-        h('span',{style:{fontSize:9,background:'#0d1b34',color:'#94a3b8',padding:'1px 5px',borderRadius:8,fontWeight:700,marginTop:2}},'G'+m.grupo),
+        h('span',{style:{fontSize:9,background:'#0d1b34',color:'#94a3b8',padding:'1px 5px',borderRadius:8,fontWeight:700,marginTop:2}},'Grupo '+m.grupo),
         isLv?h('span',{style:{fontSize:8,color:'#22c55e',fontWeight:700,animation:'blink 1s infinite',marginTop:2}},'🔴 AO VIVO'):null
       ),
       // Teams + score
@@ -731,7 +779,7 @@ function BolaoApp(){
           h('span',{style:{fontSize:11,fontWeight:700,color:isLv?'#22c55e':'#facc15'}},m.time),
           h('span',{style:{fontSize:9,color:'#64748b'}},m.date)
         ),
-        h('span',{style:{fontSize:9,background:'#0d1b34',color:'#facc15',padding:'1px 5px',borderRadius:8,fontWeight:700}},'G'+m.grupo),
+        h('span',{style:{fontSize:9,background:'#0d1b34',color:'#facc15',padding:'1px 5px',borderRadius:8,fontWeight:700}},'Grupo '+m.grupo),
         isLv?h('span',{style:{fontSize:9,color:'#22c55e',fontWeight:700,animation:'blink 1s infinite'}},'🔴 AO VIVO'):null,
         h('span',{style:{fontWeight:700,fontSize:13,flex:1,display:'flex',alignItems:'center',gap:4,flexWrap:'wrap'}},
           flagImg(m.team_a,18),' ',m.team_a,'  ×  ',m.team_b,' ',flagImg(m.team_b,18)
@@ -822,25 +870,27 @@ function BolaoApp(){
   // ── HEADER ──────────────────────────────────────────────────────────────
   var header=h('div',{style:{background:'linear-gradient(135deg,#1a3a8a 0%,#0d1b34 100%)',borderBottom:'2px solid #facc15'}},
     h('div',{style:{maxWidth:1200,margin:'0 auto',padding:'14px 20px 0'}},
-      h('div',{style:{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:12,flexWrap:'wrap'}},
+      h('div',{className:'hdr-top',style:{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:12,flexWrap:'wrap'}},
 
         // Left: title
-        h('div',{style:{minWidth:160}},
+        h('div',{className:'hdr-left',style:{minWidth:160}},
           h('div',{style:{fontSize:9,color:'#facc15',letterSpacing:3,textTransform:'uppercase',marginBottom:2}},'Copa do Mundo 2026'),
           h('div',{style:{fontSize:20,fontWeight:800,marginBottom:2}},'🏆 Bolão — Italy'),
           h('div',{style:{fontSize:11,color:'#94a3b8'}},completedCount+'/'+MATCH_LIST.length+' jogos  •  '+RAW.length+' participantes'),
           dbSt==='error'?h('div',{style:{fontSize:10,color:'#fca5a5',marginTop:4}},'⚠️ Sem conexão'):null
         ),
 
-        // Center: LIVE + NEXT side by side
-        h('div',{style:{flex:1,display:'flex',gap:10,flexWrap:'wrap',justifyContent:'center',minWidth:300,maxWidth:750}},
-          liveNow?LiveCard(liveNow,'ao vivo'):null,
-          nextUp?NextCard(nextUp):null,
-          !liveNow&&!nextUp?h('div',{style:{fontSize:13,color:'#64748b',padding:'20px',textAlign:'center'}},'🏆 Fase de grupos concluída'):null
+        // Center: LIVE on top (mobile stacks vertically), NEXT below
+        h('div',{className:'hdr-center',style:{flex:1,display:'flex',flexDirection:'column',gap:8,alignItems:'stretch',minWidth:260,maxWidth:750}},
+          h('div',{style:{display:'flex',gap:8,flexWrap:'wrap',justifyContent:'center'}},
+            liveNow?LiveCard(liveNow):null,
+            nextUp?NextCard(nextUp):null,
+            !liveNow&&!nextUp?h('div',{style:{fontSize:13,color:'#64748b',padding:'20px',textAlign:'center'}},'🏆 Fase de grupos concluída'):null
+          )
         ),
 
-        // Right: scorers + admin
-        h('div',{style:{minWidth:185}},
+        // Right: scorers
+        h('div',{className:'hdr-right',style:{minWidth:185}},
           h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}},
             h('span',{style:{fontSize:10,color:'#facc15',fontWeight:700,letterSpacing:1}},'⚽ ARTILHEIROS'),
             lastUp?h('span',{style:{fontSize:9,color:'#4a6090'}},lastUp.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})):null
@@ -852,7 +902,7 @@ function BolaoApp(){
                 h('div',{style:{flex:1,minWidth:0}},
                   h('div',{style:{color:'#e2e8f0',fontWeight:600,fontSize:11,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},
                     s.name,
-                    h('span',{style:{color:'#94a3b8',fontWeight:400,fontSize:10,marginLeft:4}},'('+s.team.toUpperCase()+')')
+                    h('span',{style:{color:'#94a3b8',fontWeight:400,fontSize:10,marginLeft:4}},s.team?'('+s.team.toUpperCase()+')':'')
                   )
                 ),
                 h('span',{style:{color:'#facc15',fontWeight:800,fontSize:13,minWidth:20,textAlign:'right'}},s.goals+'⚽')
