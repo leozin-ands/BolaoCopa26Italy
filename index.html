@@ -954,8 +954,7 @@ function BolaoApp(){
         h('div',{className:'hdr-center',style:{flex:1,display:'flex',flexDirection:'column',gap:8,alignItems:'stretch',minWidth:260,maxWidth:750}},
           h('div',{style:{display:'flex',gap:8,flexWrap:'wrap',justifyContent:'center'}},
             liveNow?LiveCard(liveNow):null,
-            NextCard(),
-            !liveNow&&!nextUp?h('div',{style:{fontSize:13,color:'#64748b',padding:'20px',textAlign:'center'}},'🏆 Fase de grupos concluída'):null
+            NextCard()
           )
         ),
 
