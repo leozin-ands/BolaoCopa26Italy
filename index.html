@@ -245,13 +245,20 @@ function useESPN(){
   var s5=useState({});   var goalMap=s5[0],setGoalMap=s5[1]; // name->goals
 
   var fetchScores=useCallback(function(){
-    // Fetch all group stage matches with a broad date range
-    var today=new Date();
-    var dd=String(today.getDate()).padStart(2,'0');
-    var mm=String(today.getMonth()+1).padStart(2,'0');
-    var yyyy=today.getFullYear();
+    // Fetch all group stage matches - use BRT (UTC-3) date to match game schedule
+    var now=new Date();
+    var brtNow=new Date(now.getTime()-3*3600000); // Brasília = UTC-3
+    var dd=String(brtNow.getDate()).padStart(2,'0');
+    var mm=String(brtNow.getMonth()+1).padStart(2,'0');
+    var yyyy=brtNow.getFullYear();
     var todayStr=yyyy+mm+dd;
-    fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?limit=100&dates=20260611-'+todayStr)
+    // Also get tomorrow's date to catch games close to midnight BRT
+    var brtTomorrow=new Date(brtNow.getTime()+86400000);
+    var ddT=String(brtTomorrow.getDate()).padStart(2,'0');
+    var mmT=String(brtTomorrow.getMonth()+1).padStart(2,'0');
+    var yyyyT=brtTomorrow.getFullYear();
+    var tomorrowStr=yyyyT+mmT+ddT;
+    fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?limit=100&dates=20260611-'+tomorrowStr)
     .then(function(r){return r.json();})
     .then(function(d){
       var gmap={};
@@ -333,8 +340,46 @@ function useESPN(){
     return Object.values(goalMap).filter(function(x){return x.goals>0;}).sort(function(a,b){return b.goals-a.goals;}).slice(0,5);
   },[goalMap]);
 
+  // Helper: fetch ESPN scoreboard for a date range and save finals to Firebase
+  function fetchAndSaveRange(dateStr){
+    fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?limit=100&dates='+dateStr)
+    .then(function(r){return r.json();})
+    .then(function(d){
+      (d.events||[]).forEach(function(e){
+        var comp=(e.competitions||[])[0]||{};
+        var comps=comp.competitors||[];
+        var home=comps.find(function(t){return t.homeAway==='home';})||comps[0]||{};
+        var away=comps.find(function(t){return t.homeAway==='away';})||comps[1]||{};
+        var st=((comp.status||{}).type||{}).name||'';
+        var isFin=st==='STATUS_FINAL'||st==='STATUS_FULL_TIME'||st==='STATUS_END_PERIOD';
+        if(!isFin||!_db)return;
+        var ha=norm(home.team&&home.team.displayName||'');
+        var aa=norm(away.team&&away.team.displayName||'');
+        var m=MATCH_LIST.find(function(m){return m.team_a===ha&&m.team_b===aa;});
+        if(!m)return;
+        _db.ref('results/'+fbkey(mkey(m))).set({sa:parseInt(home.score||'0'),sb:parseInt(away.score||'0')});
+      });
+    }).catch(function(){});
+  }
+
   useEffect(function(){
-    // Immediate fetch of all group stage results (wide date range)
+    // Fetch full group stage range AND specific recent dates to avoid missing games
+    // (ESPN API uses UTC dates, so games at midnight BRT may appear on different date)
+    fetchAndSaveRange('20260611-20260627');  // full range
+    // Also fetch last 3 days specifically to catch any timezone edge cases
+    var now=new Date();
+    // Adjust to Brasília time (UTC-3)
+    var brt=new Date(now.getTime()-3*3600000);
+    for(var d=0;d<3;d++){
+      var dd=new Date(brt.getTime()-d*86400000);
+      var ds=dd.getFullYear()+String(dd.getMonth()+1).padStart(2,'0')+String(dd.getDate()).padStart(2,'0');
+      fetchAndSaveRange(ds);
+    }
+    // Also fetch previous day in UTC to catch midnight BRT games
+    var utcYest=new Date(now.getTime()-86400000);
+    var utcDs=utcYest.getFullYear()+String(utcYest.getMonth()+1).padStart(2,'0')+String(utcYest.getDate()).padStart(2,'0');
+    fetchAndSaveRange(utcDs);
+
     fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?limit=100&dates=20260611-20260627')
     .then(function(r){return r.json();})
     .then(function(d){
