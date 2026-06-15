@@ -73,15 +73,15 @@ var KNOWN_RESULTS=[
   {key:'D_Estados Unidos_Paraguai',        sa:0, sb:0},
   {key:'D_Austrália_Turquia',              sa:2, sb:0},
 ];
-window.addEventListener('load',function(){
+// Seed known results to Firebase (runs after Firebase init above)
+setTimeout(function(){
   if(!_db)return;
   KNOWN_RESULTS.forEach(function(r){
     _db.ref('results/'+r.key).once('value',function(snap){
-      // Only write if not already stored
       if(!snap.val()) _db.ref('results/'+r.key).set({sa:r.sa,sb:r.sb});
     });
   });
-});
+}, 2000);
 </script>
 
 <script>
@@ -1107,17 +1107,17 @@ function BolaoApp(){
   );
 }
 
-window.addEventListener('load', function() {
+// Mount React app — runs synchronously after all blocking CDN scripts
+(function mountApp(){
+  var root = document.getElementById('root');
+  if(!root) return;
   try {
-    var root = document.getElementById('root');
-    if(!root) { console.error('No #root element'); return; }
-    if(typeof React === 'undefined') { root.innerHTML = '<div style="color:#fff;padding:20px">Erro: React não carregou. Verifique sua conexão.</div>'; return; }
     ReactDOM.createRoot(root).render(React.createElement(BolaoApp));
   } catch(e) {
-    console.error('App init error:', e);
-    document.getElementById('root').innerHTML = '<div style="color:#ef4444;padding:20px;font-family:sans-serif"><h3>Erro ao inicializar</h3><pre>'+e.message+'</pre></div>';
+    console.error('App mount error:', e);
+    root.innerHTML = '<div style="color:#ef4444;padding:40px;font-family:sans-serif;text-align:center"><h3 style="margin-bottom:10px">Erro ao carregar</h3><p style="color:#94a3b8;font-size:13px">'+e.message+'</p></div>';
   }
-});
+})();
 </script>
 </body>
 </html>
