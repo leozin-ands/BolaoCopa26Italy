@@ -255,107 +255,133 @@ var useCallback=React.useCallback;
 var useRef=React.useRef;
 
 // ── ESPN Hook ────────────────────────────────────────────────────────────────
-var ESPN_URL='https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard';
-var ESPN_STANDINGS='https://site.api.espn.com/apis/v2/sports/soccer/fifa.world/standings';
+var ESPN_SB  = 'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard';
+var ESPN_STD = 'https://site.api.espn.com/apis/v2/sports/soccer/fifa.world/standings';
 
 function useESPN(){
-  var s1=useState([]);   var espnEvents=s1[0],setEvents=s1[1];
-  var s2=useState([]);   var scorers=s2[0],setScorers=s2[1];
-  var s3=useState({});   var standings=s3[0],setStandings=s3[1];
-  var s4=useState(null); var lastUp=s4[0],setLastUp=s4[1];
-  var s5=useState({});   var goalMap=s5[0],setGoalMap=s5[1];
+  var _1=useState([]);  var espnEvents=_1[0], setEvents=_1[1];
+  var _2=useState([]);  var scorers=_2[0],    setScorers=_2[1];
+  var _3=useState({});  var standings=_3[0],  setStandings=_3[1];
+  var _4=useState(null);var lastUp=_4[0],     setLastUp=_4[1];
+  // Persistent goal accumulator — keyed by "PlayerName|TeamName"
+  var goalAccRef = React.useRef({});
 
-  var fetchMatches=useCallback(function(){
-    // Use BRT (UTC-3) date range to cover all matches including midnight games
-    var now=new Date();
-    var brtTomorrow=new Date(now.getTime()-3*3600000+86400000);
-    var dT=brtTomorrow.getFullYear()+String(brtTomorrow.getMonth()+1).padStart(2,'0')+String(brtTomorrow.getDate()).padStart(2,'0');
-    fetch(ESPN_URL+'?limit=100&dates=20260611-'+dT)
-    .then(function(r){return r.json();})
+  var fetchScores = useCallback(function(){
+    // Always cover the full group stage + today in BRT to catch late-night games
+    var brt = new Date(Date.now() - 3*3600000);
+    var tom = new Date(brt.getTime() + 86400000);
+    var toStr = function(d){ return d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0'); };
+    var url = ESPN_SB+'?limit=100&dates=20260611-'+toStr(tom);
+
+    fetch(url)
+    .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
     .then(function(d){
-      var gmap={};
-      var evts=(d.events||[]).map(function(e){
-        var comp=(e.competitions||[])[0]||{};
-        var comps=comp.competitors||[];
-        var home=comps.find(function(t){return t.homeAway==='home';})||comps[0]||{};
-        var away=comps.find(function(t){return t.homeAway==='away';})||comps[1]||{};
-        var st=(comp.status||{}).type||{};
-        var sn=st.name||'';
-        // Extract goal scorers from details
+      var acc = goalAccRef.current;
+      var evts = (d.events||[]).map(function(ev){
+        var comp = (ev.competitions||[])[0]||{};
+        var teams = comp.competitors||[];
+        var home  = teams.find(function(t){return t.homeAway==='home';})||teams[0]||{};
+        var away  = teams.find(function(t){return t.homeAway==='away';})||teams[1]||{};
+        var stype = (comp.status&&comp.status.type)||{};
+        var sname = stype.name||'';
+        var isFin = sname==='STATUS_FINAL'||sname==='STATUS_FULL_TIME'||sname==='STATUS_END_PERIOD';
+        var isLv  = sname==='STATUS_IN_PROGRESS';
+        var isHalf= sname==='STATUS_HALFTIME';
+        var isPre = sname==='STATUS_SCHEDULED'||sname==='STATUS_TIMED';
+
+        // Extract goals from comp.details — this is the key data for scorers
         (comp.details||[]).forEach(function(det){
-          if(det.type&&(det.type.text==='Goal'||det.type.id==='goal'||det.type.name==='goal')){
-            var athls=det.athletesInvolved||[];
-            if(athls.length>0){
-              var nm=athls[0].displayName||athls[0].fullName||'';
-              var team=det.team&&(EM[det.team.displayName]||det.team.displayName)||'';
-              if(nm){
-                if(!gmap[nm])gmap[nm]={name:nm,team:team,goals:0};
-                gmap[nm].goals++;
-              }
-            }
+          if(!det.scoringPlay) return;             // skip non-goal events
+          if(det.shootout)    return;              // skip penalty shootout goals
+          var athlete = (det.athletesInvolved||[])[0];
+          if(!athlete) return;
+          var name    = athlete.displayName||athlete.fullName||'';
+          var teamRaw = det.team&&det.team.displayName||'';
+          var team    = EM[teamRaw]||teamRaw||
+                        (home.team&&home.team.id===det.team&&det.team.id
+                          ? norm(home.team.displayName||'')
+                          : norm(away.team&&away.team.displayName||''));
+          if(!name) return;
+          var key = name+'|'+(team||'');
+          if(!acc[key]) acc[key] = {name:name, team:team, goals:0};
+          // Only count each match's goals once by using event id as guard
+          var evKey = key+'|'+ev.id;
+          if(!acc['_seen_'+evKey]){
+            acc['_seen_'+evKey] = true;
+            acc[key].goals++;
           }
         });
-        return{
-          id:e.id,
-          homeTeam:norm(home.team&&home.team.displayName||''),
-          awayTeam:norm(away.team&&away.team.displayName||''),
-          homeLogo:(home.team&&home.team.logo)||'',
-          awayLogo:(away.team&&away.team.logo)||'',
-          homeScore:parseInt(home.score||'0'),
-          awayScore:parseInt(away.score||'0'),
-          homeWin:!!home.winner,
-          awayWin:!!away.winner,
-          clock:(comp.status&&comp.status.displayClock)||'',
-          isLive:sn==='STATUS_IN_PROGRESS',
-          isHalf:sn==='STATUS_HALFTIME',
-          isFinal:sn==='STATUS_FINAL'||sn==='STATUS_FULL_TIME'||sn==='STATUS_END_PERIOD',
-          isPre:sn==='STATUS_SCHEDULED'||sn==='STATUS_TIMED',
-          fullStatusName:sn,
-          statusDetail:st.shortDetail||'',
-          date:e.date||''
+
+        return {
+          id:        ev.id,
+          homeTeam:  norm(home.team&&home.team.displayName||''),
+          awayTeam:  norm(away.team&&away.team.displayName||''),
+          homeLogo:  (home.team&&home.team.logo)||'',
+          awayLogo:  (away.team&&away.team.logo)||'',
+          homeScore: parseInt(home.score||'0'),
+          awayScore: parseInt(away.score||'0'),
+          homeWin:   !!home.winner,
+          awayWin:   !!away.winner,
+          clock:     (comp.status&&comp.status.displayClock)||'',
+          isLive:    isLv,
+          isHalf:    isHalf,
+          isFinal:   isFin,
+          isPre:     isPre,
+          fullStatusName: sname,
+          date:      ev.date||''
         };
       });
+
       setEvents(evts);
       setLastUp(new Date());
-      if(Object.keys(gmap).length>0){
-        setGoalMap(function(prev){
-          var merged=Object.assign({},prev);
-          Object.keys(gmap).forEach(function(k){merged[k]=gmap[k];});
-          return merged;
-        });
-      }
-    }).catch(function(e){console.warn('ESPN scoreboard:',e);});
-  },[]);
 
-  var fetchStandings=useCallback(function(){
-    fetch(ESPN_STANDINGS)
-    .then(function(r){return r.json();})
+      // Rebuild scorers list from accumulator
+      var list = Object.values(acc)
+        .filter(function(x){ return x.goals&&x.goals>0 && !x.name.startsWith('_'); })
+        .sort(function(a,b){ return b.goals-a.goals; })
+        .slice(0,5);
+      if(list.length) setScorers(list);
+    })
+    .catch(function(e){ console.warn('ESPN scoreboard error:',e); });
+  }, []);
+
+  var fetchStandings = useCallback(function(){
+    fetch(ESPN_STD)
+    .then(function(r){ return r.json(); })
     .then(function(d){
-      var s={};
+      var s = {};
       (d.standings||[]).forEach(function(grp){
-        var gn=(grp.name||'').replace(/Group /i,'').replace(/Grupo /i,'').trim();
-        if(!gn||gn.length>2)return;
-        s[gn]=(grp.entries||[]).map(function(e){
-          function sv(n){var x=(e.stats||[]).find(function(x){return x.name===n;});return x?x.value:0;}
-          return{team:norm(e.team&&e.team.displayName||e.team&&e.team.name||''),logo:e.team&&e.team.logo||'',played:sv('gamesPlayed'),wins:sv('wins'),draws:sv('ties'),losses:sv('losses'),gf:sv('pointsFor'),ga:sv('pointsAgainst'),pts:sv('points')};
+        var gn = (grp.name||'').replace(/Group /i,'').replace(/Grupo /i,'').trim();
+        if(!gn||gn.length>2) return;
+        s[gn] = (grp.entries||[]).map(function(e){
+          var sv = function(n){
+            var x = (e.stats||[]).find(function(x){return x.name===n;});
+            return x?x.value:0;
+          };
+          return {
+            team:   norm(e.team&&(e.team.displayName||e.team.name)||''),
+            logo:   (e.team&&e.team.logo)||'',
+            played: sv('gamesPlayed'), wins:   sv('wins'),
+            draws:  sv('ties'),        losses: sv('losses'),
+            gf:     sv('pointsFor'),   ga:     sv('pointsAgainst'),
+            pts:    sv('points')
+          };
         });
       });
       setStandings(s);
-    }).catch(function(){});
-  },[]);
-
-  var topScorers=useMemo(function(){
-    return Object.values(goalMap).filter(function(x){return x.goals>0;}).sort(function(a,b){return b.goals-a.goals;}).slice(0,5);
-  },[goalMap]);
+    })
+    .catch(function(e){ console.warn('ESPN standings error:',e); });
+  }, []);
 
   useEffect(function(){
-    fetchMatches();fetchStandings();
-    var t1=setInterval(fetchMatches,30000);
-    var t2=setInterval(fetchStandings,180000);
-    return function(){clearInterval(t1);clearInterval(t2);};
-  },[]);
+    fetchScores();
+    fetchStandings();
+    var t1 = setInterval(fetchScores,   30000);   // live scores every 30 s
+    var t2 = setInterval(fetchStandings, 180000); // standings every 3 min
+    return function(){ clearInterval(t1); clearInterval(t2); };
+  }, []);
 
-  return{espnEvents:espnEvents,scorers:topScorers,standings:standings,lastUp:lastUp};
+  return { espnEvents:espnEvents, scorers:scorers, standings:standings, lastUp:lastUp };
 }
 
 
@@ -411,32 +437,36 @@ function BolaoApp(){
     }
   },[]);
 
-  var espnCacheRef=React.useRef({});
-  var s_ec=useState({}); var espnScoreCache=s_ec[0],setEspnScoreCache=s_ec[1];
+  // Cache ESPN scores in state so React re-renders when scores change
+  // Also auto-save finals to Firebase for persistence
+  var espnCacheRef = React.useRef({});
+  var _sec = useState({}); var espnScoreCache=_sec[0], setEspnScoreCache=_sec[1];
+
   React.useEffect(function(){
-    var changed=false;
+    var changed = false;
     espnEvents.forEach(function(ev){
-      // Only cache finished or live/half matches
-      if(!ev.isFinal&&!ev.isLive&&!ev.isHalf)return;
-      var m=MATCH_LIST.find(function(m){return m.team_a===ev.homeTeam&&m.team_b===ev.awayTeam;});
-      if(!m)return;
-      var fk=fbkey(mkey(m));
-      var prev=espnCacheRef.current[fk];
-      var next={sa:ev.homeScore,sb:ev.awayScore};
-      if(!prev||prev.sa!==next.sa||prev.sb!==next.sb){
-        espnCacheRef.current[fk]=next;
-        changed=true;
-        // Persist final scores to Firebase
-        if(ev.isFinal&&_db) _db.ref('results/'+fk).set(next);
+      if(!ev.isFinal && !ev.isLive && !ev.isHalf) return;
+      var m = MATCH_LIST.find(function(m){
+        return m.team_a===ev.homeTeam && m.team_b===ev.awayTeam;
+      });
+      if(!m) return;
+      var fk   = fbkey(mkey(m));
+      var prev = espnCacheRef.current[fk];
+      var next = {sa:ev.homeScore, sb:ev.awayScore};
+      if(!prev || prev.sa!==next.sa || prev.sb!==next.sb){
+        espnCacheRef.current[fk] = next;
+        changed = true;
+        // Persist final scores to Firebase immediately
+        if(ev.isFinal && _db) _db.ref('results/'+fk).set(next);
       }
     });
-    if(changed) setEspnScoreCache(Object.assign({},espnCacheRef.current));
-  },[espnEvents]);
+    if(changed) setEspnScoreCache(Object.assign({}, espnCacheRef.current));
+  }, [espnEvents]);
 
-  // Merge Firebase results + football-data live cache
-  var merged=useMemo(function(){
-    return Object.assign({},results,espnScoreCache);
-  },[results,espnScoreCache]);
+  // Merge: Firebase (persistent) + ESPN live cache (real-time)
+  var merged = useMemo(function(){
+    return Object.assign({}, results, espnScoreCache);
+  }, [results, espnScoreCache]);
 
   // Scores
   var scores=useMemo(function(){
