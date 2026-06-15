@@ -276,7 +276,9 @@ function useESPN(){
     fetch(url)
     .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
     .then(function(d){
-      var acc = goalAccRef.current;
+      // Reset accumulator on each fetch to get fresh counts from all matches
+      var acc = {};
+      goalAccRef.current = acc;
       var evts = (d.events||[]).map(function(ev){
         var comp = (ev.competitions||[])[0]||{};
         var teams = comp.competitors||[];
@@ -304,12 +306,8 @@ function useESPN(){
           if(!name) return;
           var key = name+'|'+(team||'');
           if(!acc[key]) acc[key] = {name:name, team:team, goals:0};
-          // Only count each match's goals once by using event id as guard
-          var evKey = key+'|'+ev.id;
-          if(!acc['_seen_'+evKey]){
-            acc['_seen_'+evKey] = true;
-            acc[key].goals++;
-          }
+          // Count this goal (deduplication handled by seen set below)
+          acc[key].goals++;
         });
 
         return {
@@ -334,16 +332,59 @@ function useESPN(){
 
       setEvents(evts);
       setLastUp(new Date());
+      // Also do deep scorer fetch for completed matches
+      fetchAllScorers(evts);
 
       // Rebuild scorers list from accumulator
       var list = Object.values(acc)
-        .filter(function(x){ return x.goals&&x.goals>0 && !x.name.startsWith('_'); })
+        .filter(function(x){ return x&&typeof x==='object'&&x.goals>0; })
         .sort(function(a,b){ return b.goals-a.goals; })
         .slice(0,5);
       if(list.length) setScorers(list);
     })
     .catch(function(e){ console.warn('ESPN scoreboard error:',e); });
   }, []);
+
+  // On mount: fetch each completed match's summary to get full goal details
+  function fetchAllScorers(events){
+    var completed = (events||[]).filter(function(ev){
+      return ev.isFinal;
+    });
+    if(!completed.length) return;
+    var allGoals = {};
+    var pending = completed.length;
+    completed.forEach(function(ev){
+      fetch(ESPN_SB.replace('scoreboard','summary')+'?event='+ev.id)
+      .then(function(r){return r.json();})
+      .then(function(d){
+        ((d.header&&d.header.competitions)||[d]).forEach(function(comp){
+          ((comp&&comp.details)||[]).forEach(function(det){
+            if(!det||!det.scoringPlay||det.shootout) return;
+            var ath=(det.athletesInvolved||[])[0];
+            if(!ath) return;
+            var nm=ath.displayName||ath.fullName||'';
+            var teamRaw=det.team&&det.team.displayName||'';
+            var team=EM[teamRaw]||teamRaw||'';
+            if(!nm) return;
+            var key=nm;
+            if(!allGoals[key]) allGoals[key]={name:nm,team:team,goals:0};
+            allGoals[key].goals++;
+          });
+        });
+      })
+      .catch(function(){})
+      .finally(function(){
+        pending--;
+        if(pending===0){
+          var list=Object.values(allGoals)
+            .filter(function(x){return x.goals>0;})
+            .sort(function(a,b){return b.goals-a.goals;})
+            .slice(0,5);
+          if(list.length) setScorers(list);
+        }
+      });
+    });
+  }
 
   var fetchStandings = useCallback(function(){
     fetch(ESPN_STD)
