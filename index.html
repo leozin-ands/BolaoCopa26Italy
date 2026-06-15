@@ -65,7 +65,7 @@ try{
 }catch(e){console.error('Firebase init error:',e);}
 
 // Known confirmed results — seeded on init if not already in Firebase
-// These ensure results are always available even if ESPN API misses them
+// These ensure results are always available even if football-data API misses them
 var KNOWN_RESULTS=[
   {key:'A_México_África do Sul',         sa:2, sb:0},
   {key:'A_Coreia do Sul_República Tcheca',sa:2, sb:1},
@@ -254,179 +254,144 @@ var useMemo=React.useMemo;
 var useCallback=React.useCallback;
 var useRef=React.useRef;
 
-// ── ESPN Hook — fetches live scores, standings, AND scorers from goal details ──
-function useESPN(){
-  var s1=useState([]);   var espnEvents=s1[0],setEvents=s1[1];
+// ── Football-Data.org Hook ──────────────────────────────────────────────────
+// API: https://www.football-data.org/v4/ | Free tier: 10 req/min
+// Get your free API key at: https://www.football-data.org/client/register
+var FD_TOKEN = 'SEU_TOKEN_AQUI'; // ← substitua pelo seu token do football-data.org
+
+// Name map: football-data.org English names → Portuguese
+var FD_MAP = {
+  'Mexico':'México','South Africa':'África do Sul','South Korea':'Coreia do Sul',
+  'Czech Republic':'República Tcheca','Czechia':'República Tcheca',
+  'Bosnia and Herzegovina':'Bósnia e Herzegovina','Bosnia-Herzegovina':'Bósnia e Herzegovina',
+  'Qatar':'Catar','Switzerland':'Suíça','Brazil':'Brasil','Morocco':'Marrocos',
+  'Scotland':'Escócia','United States':'Estados Unidos','USA':'Estados Unidos',
+  'Paraguay':'Paraguai','Australia':'Austrália','Turkey':'Turquia','Türkiye':'Turquia',
+  'Germany':'Alemanha',"Ivory Coast":'Costa do Marfim',"Côte d'Ivoire":'Costa do Marfim',
+  'Ecuador':'Equador','Netherlands':'Holanda','Japan':'Japão','Sweden':'Suécia',
+  'Tunisia':'Tunísia','Belgium':'Bélgica','Egypt':'Egito','Iran':'Irã',
+  'Islamic Republic of Iran':'Irã',
+  'New Zealand':'Nova Zelândia','Spain':'Espanha','Cape Verde':'Cabo Verde',
+  'Saudi Arabia':'Arábia Saudita','Uruguay':'Uruguai','France':'França',
+  'Senegal':'Senegal','Iraq':'Iraque','Norway':'Noruega','Argentina':'Argentina',
+  'Algeria':'Argélia','Austria':'Áustria','Jordan':'Jordânia','Portugal':'Portugal',
+  'DR Congo':'Rep. D. Congo','Democratic Republic of Congo':'Rep. D. Congo',
+  'Uzbekistan':'Uzbequistão','Colombia':'Colômbia','England':'Inglaterra',
+  'Croatia':'Croácia','Ghana':'Gana','Panama':'Panamá','Canada':'Canadá',
+  'Curacao':'Curaçao','Curaçao':'Curaçao','Haiti':'Haiti',
+  'New Caledonia':'Nova Caledônia','Kosovo':'Kosovo',
+};
+function fdNorm(t){return FD_MAP[t]||t;}
+
+function useFootballData(){
+  var s1=useState([]);   var fdEvents=s1[0],setFdEvents=s1[1];
   var s2=useState([]);   var scorers=s2[0],setScorers=s2[1];
   var s3=useState({});   var standings=s3[0],setStandings=s3[1];
   var s4=useState(null); var lastUp=s4[0],setLastUp=s4[1];
-  // scorers built from goal events across all matches
-  var s5=useState({});   var goalMap=s5[0],setGoalMap=s5[1]; // name->goals
+  var s5=useState({});   var goalMap=s5[0],setGoalMap=s5[1];
 
-  var fetchScores=useCallback(function(){
-    // Fetch all group stage matches - use BRT (UTC-3) date to match game schedule
-    var now=new Date();
-    var brtNow=new Date(now.getTime()-3*3600000); // Brasília = UTC-3
-    var dd=String(brtNow.getDate()).padStart(2,'0');
-    var mm=String(brtNow.getMonth()+1).padStart(2,'0');
-    var yyyy=brtNow.getFullYear();
-    var todayStr=yyyy+mm+dd;
-    // Also get tomorrow's date to catch games close to midnight BRT
-    var brtTomorrow=new Date(brtNow.getTime()+86400000);
-    var ddT=String(brtTomorrow.getDate()).padStart(2,'0');
-    var mmT=String(brtTomorrow.getMonth()+1).padStart(2,'0');
-    var yyyyT=brtTomorrow.getFullYear();
-    var tomorrowStr=yyyyT+mmT+ddT;
-    fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?limit=100&dates=20260611-'+tomorrowStr)
+  var FD_BASE='https://api.football-data.org/v4';
+  var FD_HEADERS={'X-Auth-Token':FD_TOKEN};
+
+  var fetchMatches=useCallback(function(){
+    if(!FD_TOKEN||FD_TOKEN==='SEU_TOKEN_AQUI')return;
+    fetch(FD_BASE+'/competitions/WC/matches?season=2026&stage=GROUP_STAGE',{headers:FD_HEADERS})
     .then(function(r){return r.json();})
     .then(function(d){
+      if(!d.matches)return;
       var gmap={};
-      var evts=(d.events||[]).map(function(e){
-        var comp=(e.competitions||[])[0]||{};
-        var comps=comp.competitors||[];
-        var home=comps.find(function(t){return t.homeAway==='home';})||comps[0]||{};
-        var away=comps.find(function(t){return t.homeAway==='away';})||comps[1]||{};
-        var st=(comp.status||{}).type||{};
-        var sn=st.name||'';
-        // extract goal scorers from details
-        (comp.details||[]).forEach(function(det){
-          if(det.type&&(det.type.text==='Goal'||det.type.id==='goal'||det.type.name==='goal')){
-            var athls=det.athletesInvolved||[];
-            if(athls.length>0){
-              var nm=athls[0].displayName||athls[0].fullName||'';
-              var team=det.team&&(EM[det.team.displayName]||det.team.displayName)||'';
+      var evts=d.matches.map(function(m){
+        var hn=fdNorm(m.homeTeam&&m.homeTeam.name||'');
+        var an=fdNorm(m.awayTeam&&m.awayTeam.name||'');
+        var st=m.status||'';
+        var isLive=st==='IN_PLAY';
+        var isHalf=st==='PAUSED';
+        var isFinal=st==='FINISHED';
+        var isPre=st==='SCHEDULED'||st==='TIMED';
+        var hScore=m.score&&m.score.fullTime?m.score.fullTime.home:0;
+        var aScore=m.score&&m.score.fullTime?m.score.fullTime.away:0;
+        var hHalf=m.score&&m.score.halfTime?m.score.halfTime.home:0;
+        var aHalf=m.score&&m.score.halfTime?m.score.halfTime.away:0;
+        // Live score from in-play: use halfTime if paused, or current regular score
+        var dispHome=isLive||isHalf?(m.score&&m.score.regularTime?m.score.regularTime.home:hScore||0):hScore||0;
+        var dispAway=isLive||isHalf?(m.score&&m.score.regularTime?m.score.regularTime.away:aScore||0):aScore||0;
+        // Extract scorers from goals
+        if(m.goals&&m.goals.length){
+          m.goals.forEach(function(g){
+            if(g.type==='REGULAR'||g.type==='EXTRA_TIME'){
+              var nm=g.scorer&&g.scorer.name||'';
+              var team=g.team&&fdNorm(g.team.name)||'';
               if(nm){
-                if(!gmap[nm]) gmap[nm]={name:nm,team:team,goals:0};
+                if(!gmap[nm])gmap[nm]={name:nm,team:team,goals:0};
                 gmap[nm].goals++;
               }
             }
-          }
-        });
+          });
+        }
         return{
-          id:e.id,
-          homeTeam:norm(home.team&&home.team.displayName||''),
-          awayTeam:norm(away.team&&away.team.displayName||''),
-          homeLogo:(home.team&&home.team.logo)||'',
-          awayLogo:(away.team&&away.team.logo)||'',
-          homeColor:(home.team&&home.team.color)||'1a3a8a',
-          awayColor:(away.team&&away.team.color)||'1a3a8a',
-          homeScore:parseInt(home.score||'0'),
-          awayScore:parseInt(away.score||'0'),
-          homeWin:!!home.winner,
-          awayWin:!!away.winner,
-          clock:(comp.status&&comp.status.displayClock)||'',
-          period:(comp.status&&comp.status.period)||0,
-          isLive:sn==='STATUS_IN_PROGRESS',
-          isHalf:sn==='STATUS_HALFTIME',
-          isFinal:sn==='STATUS_FINAL'||sn==='STATUS_FULL_TIME'||sn==='STATUS_END_PERIOD',
-          isPre:sn==='STATUS_SCHEDULED',
-          statusDetail:st.shortDetail||'',
-          date:e.date||''
+          id:m.id,
+          homeTeam:hn, awayTeam:an,
+          homeLogo:(m.homeTeam&&m.homeTeam.crest)||'',
+          awayLogo:(m.awayTeam&&m.awayTeam.crest)||'',
+          homeScore:isFinal?hScore||0:dispHome||0,
+          awayScore:isFinal?aScore||0:dispAway||0,
+          homeWin:isFinal&&(hScore||0)>(aScore||0),
+          awayWin:isFinal&&(aScore||0)>(hScore||0),
+          clock:m.minute?m.minute+"'":'',
+          isLive:isLive, isHalf:isHalf, isFinal:isFinal, isPre:isPre,
+          fullStatusName:st,
+          statusDetail:st,
+          date:m.utcDate||'',
         };
       });
-      setEvents(evts);
+      setFdEvents(evts);
       setLastUp(new Date());
-      // Update goal map
       if(Object.keys(gmap).length>0){
-        setGoalMap(function(prev){
-          var merged=Object.assign({},prev);
-          Object.keys(gmap).forEach(function(k){merged[k]=gmap[k];});
-          return merged;
-        });
+        setGoalMap(function(prev){return Object.assign({},prev,gmap);});
       }
-    }).catch(function(e){console.warn('ESPN scoreboard:',e);});
+    }).catch(function(e){console.warn('football-data matches:',e);});
   },[]);
 
   var fetchStandings=useCallback(function(){
-    fetch('https://site.api.espn.com/apis/v2/sports/soccer/fifa.world/standings')
+    if(!FD_TOKEN||FD_TOKEN==='SEU_TOKEN_AQUI')return;
+    fetch(FD_BASE+'/competitions/WC/standings?season=2026',{headers:FD_HEADERS})
     .then(function(r){return r.json();})
     .then(function(d){
+      if(!d.standings)return;
       var s={};
-      (d.standings||[]).forEach(function(grp){
-        var gn=(grp.name||'').replace(/Group /i,'').replace(/Grupo /i,'').trim();
-        if(!gn||gn.length>2)return;
-        s[gn]=(grp.entries||[]).map(function(e){
-          function sv(n){var x=(e.stats||[]).find(function(x){return x.name===n;});return x?x.value:0;}
-          return{team:norm(e.team&&e.team.displayName||e.team&&e.team.name||''),logo:e.team&&e.team.logo||'',played:sv('gamesPlayed'),wins:sv('wins'),draws:sv('ties'),losses:sv('losses'),gf:sv('pointsFor'),ga:sv('pointsAgainst'),pts:sv('points')};
+      d.standings.forEach(function(grp){
+        if(grp.type!=='TOTAL')return;
+        var gn=(grp.group||'').replace('GROUP_','');
+        if(!gn)return;
+        s[gn]=(grp.table||[]).map(function(e){
+          return{
+            team:fdNorm(e.team&&e.team.name||''),
+            logo:(e.team&&e.team.crest)||'',
+            played:e.playedGames||0, wins:e.won||0, draws:e.draw||0,
+            losses:e.lost||0, gf:e.goalsFor||0, ga:e.goalsAgainst||0,
+            pts:e.points||0
+          };
         });
       });
       setStandings(s);
-    }).catch(function(){});
+    }).catch(function(e){console.warn('football-data standings:',e);});
   },[]);
 
-  // Build top 5 scorers list from goalMap
   var topScorers=useMemo(function(){
-    return Object.values(goalMap).filter(function(x){return x.goals>0;}).sort(function(a,b){return b.goals-a.goals;}).slice(0,5);
+    return Object.values(goalMap).filter(function(x){return x.goals>0;})
+      .sort(function(a,b){return b.goals-a.goals;}).slice(0,5);
   },[goalMap]);
 
-  // Helper: fetch ESPN scoreboard for a date range and save finals to Firebase
-  function fetchAndSaveRange(dateStr){
-    fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?limit=100&dates='+dateStr)
-    .then(function(r){return r.json();})
-    .then(function(d){
-      (d.events||[]).forEach(function(e){
-        var comp=(e.competitions||[])[0]||{};
-        var comps=comp.competitors||[];
-        var home=comps.find(function(t){return t.homeAway==='home';})||comps[0]||{};
-        var away=comps.find(function(t){return t.homeAway==='away';})||comps[1]||{};
-        var st=((comp.status||{}).type||{}).name||'';
-        var isFin=st==='STATUS_FINAL'||st==='STATUS_FULL_TIME'||st==='STATUS_END_PERIOD';
-        if(!isFin||!_db)return;
-        var ha=norm(home.team&&home.team.displayName||'');
-        var aa=norm(away.team&&away.team.displayName||'');
-        var m=MATCH_LIST.find(function(m){return m.team_a===ha&&m.team_b===aa;});
-        if(!m)return;
-        _db.ref('results/'+fbkey(mkey(m))).set({sa:parseInt(home.score||'0'),sb:parseInt(away.score||'0')});
-      });
-    }).catch(function(){});
-  }
-
   useEffect(function(){
-    // Fetch full group stage range AND specific recent dates to avoid missing games
-    // (ESPN API uses UTC dates, so games at midnight BRT may appear on different date)
-    fetchAndSaveRange('20260611-20260627');  // full range
-    // Also fetch last 3 days specifically to catch any timezone edge cases
-    var now=new Date();
-    // Adjust to Brasília time (UTC-3)
-    var brt=new Date(now.getTime()-3*3600000);
-    for(var d=0;d<3;d++){
-      var dd=new Date(brt.getTime()-d*86400000);
-      var ds=dd.getFullYear()+String(dd.getMonth()+1).padStart(2,'0')+String(dd.getDate()).padStart(2,'0');
-      fetchAndSaveRange(ds);
-    }
-    // Also fetch previous day in UTC to catch midnight BRT games
-    var utcYest=new Date(now.getTime()-86400000);
-    var utcDs=utcYest.getFullYear()+String(utcYest.getMonth()+1).padStart(2,'0')+String(utcYest.getDate()).padStart(2,'0');
-    fetchAndSaveRange(utcDs);
-
-    fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?limit=100&dates=20260611-20260627')
-    .then(function(r){return r.json();})
-    .then(function(d){
-      // Process all events from this full-range fetch
-      var allEvts=(d.events||[]);
-      allEvts.forEach(function(e){
-        var comp=(e.competitions||[])[0]||{};
-        var comps=comp.competitors||[];
-        var home=comps.find(function(t){return t.homeAway==='home';})||comps[0]||{};
-        var away=comps.find(function(t){return t.homeAway==='away';})||comps[1]||{};
-        var st=((comp.status||{}).type||{}).name||'';
-        var isFin=st==='STATUS_FINAL'||st==='STATUS_FULL_TIME'||st==='STATUS_END_PERIOD';
-        if(!isFin||!_db)return;
-        var ha=norm(home.team&&home.team.displayName||'');
-        var aa=norm(away.team&&away.team.displayName||'');
-        var m=MATCH_LIST.find(function(m){return m.team_a===ha&&m.team_b===aa;});
-        if(!m)return;
-        _db.ref('results/'+fbkey(mkey(m))).set({sa:parseInt(home.score||'0'),sb:parseInt(away.score||'0')});
-      });
-    }).catch(function(){});
-    fetchScores();fetchStandings();
-    var t1=setInterval(fetchScores,30000);
-    var t2=setInterval(fetchStandings,120000);
+    fetchMatches();fetchStandings();
+    var t1=setInterval(fetchMatches,60000);   // poll every 60s (free tier: 10 req/min)
+    var t2=setInterval(fetchStandings,180000);
     return function(){clearInterval(t1);clearInterval(t2);};
   },[]);
 
-  return{espnEvents:espnEvents,scorers:topScorers,standings:standings,lastUp:lastUp};
+  return{espnEvents:fdEvents,scorers:topScorers,standings:standings,lastUp:lastUp};
 }
+
 
 // ── Main App ──────────────────────────────────────────────────────────────────
 function BolaoApp(){
@@ -436,10 +401,10 @@ function BolaoApp(){
   var s4=useState('ALL');   var gFilter=s4[0],setGFilter=s4[1]; // guesses tab filter
   var s9=useState('ok');    var dbSt=s9[0],setDbSt=s9[1];
 
-  var espn=useESPN();
+  var espn=useFootballData();
   var espnEvents=espn.espnEvents;
   var scorers=espn.scorers;
-  var espnStandings=espn.standings;
+  var fdStandings=espn.standings;
   var lastUp=espn.lastUp;
 
   // Firebase sync
@@ -448,46 +413,33 @@ function BolaoApp(){
     _db.ref('results').on('value',function(s){setResults(s.val()||{});setDbSt('ok');},function(){setDbSt('error');});
   },[]);
 
-  // Auto-save ESPN completed results to Firebase
-  useEffect(function(){
-    if(!_db)return;
-    espnEvents.forEach(function(ev){
-      // Save both finished and live scores so they persist
-      if(!ev.isFinal&&!ev.isLive&&!ev.isHalf&&ev.fullStatusName!=='STATUS_END_PERIOD'&&ev.fullStatusName!=='STATUS_FULL_TIME')return;
-      var m=MATCH_LIST.find(function(m){return m.team_a===ev.homeTeam&&m.team_b===ev.awayTeam;});
-      if(!m)return;
-      var fk=fbkey(mkey(m));
-      // Only overwrite Firebase with final scores (not live, to avoid overwriting with in-progress)
-      if(ev.isFinal){
-        _db.ref('results/'+fk).set({sa:ev.homeScore,sb:ev.awayScore});
-      }
-    });
-  },[espnEvents]);
-
-  // ESPN score cache — stored in state so React re-renders when scores change
-  var s_ec=useState({}); var espnScoreCache=s_ec[0],setEspnScoreCache=s_ec[1];
-  var espnCacheRef=React.useRef({});
+  // Auto-save football-data.org final results to Firebase
+  var fdCacheRef=React.useRef({});
+  var s_ec=useState({}); var fdScoreCache=s_ec[0],setFdScoreCache=s_ec[1];
   React.useEffect(function(){
     var changed=false;
     espnEvents.forEach(function(ev){
+      // Only cache finished or live/half matches
       if(!ev.isFinal&&!ev.isLive&&!ev.isHalf)return;
       var m=MATCH_LIST.find(function(m){return m.team_a===ev.homeTeam&&m.team_b===ev.awayTeam;});
       if(!m)return;
       var fk=fbkey(mkey(m));
-      var prev=espnCacheRef.current[fk];
+      var prev=fdCacheRef.current[fk];
       var next={sa:ev.homeScore,sb:ev.awayScore};
       if(!prev||prev.sa!==next.sa||prev.sb!==next.sb){
-        espnCacheRef.current[fk]=next;
+        fdCacheRef.current[fk]=next;
         changed=true;
+        // Persist final scores to Firebase
+        if(ev.isFinal&&_db) _db.ref('results/'+fk).set(next);
       }
     });
-    if(changed) setEspnScoreCache(Object.assign({},espnCacheRef.current));
+    if(changed) setFdScoreCache(Object.assign({},fdCacheRef.current));
   },[espnEvents]);
 
-  // Merge Firebase + ESPN cache — re-renders when either changes
+  // Merge Firebase results + football-data live cache
   var merged=useMemo(function(){
-    return Object.assign({},results,espnScoreCache);
-  },[results,espnScoreCache]);
+    return Object.assign({},results,fdScoreCache);
+  },[results,fdScoreCache]);
 
   // Scores
   var scores=useMemo(function(){
@@ -567,8 +519,8 @@ function BolaoApp(){
     return all.filter(function(m){return m.grupo===gFilter;});
   },[gFilter,merged,espnEvents]);
 
-  // ESPN live/next
-  // Keep last known live event so it doesn't flicker when ESPN polls
+  // FD live/next
+  // Keep last known live event so it doesn't flicker between polls
   var liveCache=React.useRef(null);
   var currentLive=espnEvents.find(function(e){return e.isLive||e.isHalf;});
   if(currentLive) liveCache.current=currentLive;
@@ -576,7 +528,7 @@ function BolaoApp(){
 
   // nextUp removed — NextCard is now offline
 
-  // ── LIVE WIDGET (ESPN-style) ─────────────────────────────────────────────
+  // ── LIVE WIDGET ───────────────────────────────────────────────────────────────
   function TeamBadge(name,logo,size){
     var code=FLAG_CODES[name];
     // Always use flagcdn w40 (guaranteed valid) scaled via CSS — matches reference image exactly
@@ -586,7 +538,7 @@ function BolaoApp(){
         style:{width:size+'px',height:Math.round(size*0.75)+'px',objectFit:'cover',borderRadius:3,display:'block'},
         alt:name,
         onError:function(e){
-          // Fallback to ESPN logo on error
+          // Fallback to football-data crest on error
           if(logo&&logo.length>0){e.target.src=logo;e.target.style.height=size+'px';e.target.style.objectFit='contain';}
           else{e.target.style.display='none';}
         }
@@ -613,7 +565,7 @@ function BolaoApp(){
       // Top bar: competition + status
       h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}},
         h('div',{style:{display:'flex',alignItems:'center',gap:6}},
-          h('img',{src:'https://a.espncdn.com/i/leaguelogos/soccer/500/4.png',
+          h('span',{style:{fontSize:13},
             style:{width:16,height:16,objectFit:'contain'},alt:'FIFA'}),
           h('span',{style:{fontSize:9,color:'#94a3b8',letterSpacing:1,textTransform:'uppercase',fontWeight:600}},
             'Copa do Mundo FIFA 2026™')
@@ -695,7 +647,7 @@ function BolaoApp(){
     }},
       h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}},
         h('div',{style:{display:'flex',alignItems:'center',gap:6}},
-          h('img',{src:'https://a.espncdn.com/i/leaguelogos/soccer/500/4.png',style:{width:16,height:16,objectFit:'contain'},alt:'FIFA'}),
+          h('span',{style:{fontSize:14}},'⚽'),
           h('span',{style:{fontSize:9,color:'#94a3b8',letterSpacing:1,textTransform:'uppercase',fontWeight:600}},
             'Copa do Mundo FIFA 2026™')
         ),
@@ -860,8 +812,8 @@ function BolaoApp(){
     ),
     h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:14}},
       GROUPS.map(function(g){
-        if(Object.keys(espnStandings).length>0&&espnStandings[g]&&espnStandings[g].length>0)
-          return StandingsTable(g,espnStandings[g]);
+        if(Object.keys(fdStandings).length>0&&fdStandings[g]&&fdStandings[g].length>0)
+          return StandingsTable(g,fdStandings[g]);
         // fallback: compute
         var teams=TEAMS_BY_GROUP[g];
         var rows=teams.map(function(team){
