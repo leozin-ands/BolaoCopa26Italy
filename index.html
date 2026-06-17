@@ -314,7 +314,7 @@ function useESPN(){
       var list=Object.keys(gmap).map(function(k){return gmap[k];})
         .filter(function(x){return x.goals>0;})
         .sort(function(a,b){return b.goals-a.goals;})
-        .slice(0,5);
+        .slice(0,10);
       if(list.length)setScorers(list);
       // Auto-save finals to Firebase
       evts.forEach(function(ev){
