@@ -72,14 +72,17 @@ var KNOWN_RESULTS=[
   {key:'B_Canadá_Bósnia e Herzegovina',   sa:0, sb:1},
   {key:'D_Estados Unidos_Paraguai',        sa:0, sb:0},
   {key:'D_Austrália_Turquia',              sa:2, sb:0},
-  {key:'K_Portugal_Rep. D. Congo',         sa:1, sb:1},
+  {key:'K_Portugal_Rep_ D_ Congo',          sa:1, sb:1},
 ];
 window.addEventListener('load',function(){
   if(!_db)return;
   KNOWN_RESULTS.forEach(function(r){
     _db.ref('results/'+r.key).once('value',function(snap){
-      // Only write if not already stored
-      if(!snap.val()) _db.ref('results/'+r.key).set({sa:r.sa,sb:r.sb});
+      var cur=snap.val();
+      // Write if missing OR if stored value differs from the known correct result
+      if(!cur||cur.sa!==r.sa||cur.sb!==r.sb){
+        _db.ref('results/'+r.key).set({sa:r.sa,sb:r.sb});
+      }
     });
   });
 });
