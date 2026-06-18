@@ -270,7 +270,9 @@ function useESPN(){
     var tom=new Date(brt.getTime()+86400000);
     var pad=function(n){return String(n).padStart(2,'0');};
     var toStr=function(d){return d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate());};
-    fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?limit=100&dates=20260611-'+toStr(tom))
+    // Fetch full World Cup group stage range to catch any missed finished games
+    // ESPN may drop old completed games from day-specific results, so always use full range
+    fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?limit=100&dates=20260611-20260628')
     .then(function(r){return r.json();})
     .then(function(d){
       // Build fresh goal map from all events
@@ -378,43 +380,44 @@ function BolaoApp(){
     _db.ref('results').on('value',function(s){setResults(s.val()||{});setDbSt('ok');},function(){setDbSt('error');});
   },[]);
 
-  // Auto-save ESPN completed results to Firebase
-  useEffect(function(){
-    if(!_db)return;
-    espnEvents.forEach(function(ev){
-      // Save both finished and live scores so they persist
-      if(!ev.isFinal&&!ev.isLive&&!ev.isHalf&&ev.fullStatusName!=='STATUS_END_PERIOD'&&ev.fullStatusName!=='STATUS_FULL_TIME')return;
-      var m=MATCH_LIST.find(function(m){return m.team_a===ev.homeTeam&&m.team_b===ev.awayTeam;});
-      if(!m)return;
-      var fk=fbkey(mkey(m));
-      // Only overwrite Firebase with final scores (not live, to avoid overwriting with in-progress)
-      if(ev.isFinal){
-        _db.ref('results/'+fk).set({sa:ev.homeScore,sb:ev.awayScore});
-      }
-    });
-  },[espnEvents]);
-
-  // ESPN score cache — stored in state so React re-renders when scores change
-  var s_ec=useState({}); var espnScoreCache=s_ec[0],setEspnScoreCache=s_ec[1];
+  // ── Persistent score cache: accumulates ALL ESPN scores across every poll ──
+  // Uses useRef so it never resets between renders; state copy triggers re-render
   var espnCacheRef=React.useRef({});
+  var s_ec=useState({}); var espnScoreCache=s_ec[0],setEspnScoreCache=s_ec[1];
+
   React.useEffect(function(){
+    if(!espnEvents.length)return;
     var changed=false;
+
     espnEvents.forEach(function(ev){
+      // Accept live, half-time AND finished scores
       if(!ev.isFinal&&!ev.isLive&&!ev.isHalf)return;
-      var m=MATCH_LIST.find(function(m){return m.team_a===ev.homeTeam&&m.team_b===ev.awayTeam;});
+      var m=MATCH_LIST.find(function(m){
+        return m.team_a===ev.homeTeam&&m.team_b===ev.awayTeam;
+      });
       if(!m)return;
       var fk=fbkey(mkey(m));
       var prev=espnCacheRef.current[fk];
       var next={sa:ev.homeScore,sb:ev.awayScore};
+
+      // Only update cache when score actually changes
       if(!prev||prev.sa!==next.sa||prev.sb!==next.sb){
         espnCacheRef.current[fk]=next;
         changed=true;
+
+        // Immediately persist FINAL scores to Firebase so they survive page reload
+        if(ev.isFinal&&_db){
+          _db.ref('results/'+fk).set(next);
+        }
       }
     });
+
+    // Trigger React re-render (scores / ranking / palpites all update)
     if(changed) setEspnScoreCache(Object.assign({},espnCacheRef.current));
   },[espnEvents]);
 
-  // Merge Firebase + ESPN cache — re-renders when either changes
+  // Merge: Firebase (persistent) overrides nothing; ESPN cache adds live+final scores
+  // espnCacheRef.current persists across polls — scores never disappear between polls
   var merged=useMemo(function(){
     return Object.assign({},results,espnScoreCache);
   },[results,espnScoreCache]);
