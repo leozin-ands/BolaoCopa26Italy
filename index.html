@@ -981,6 +981,7 @@ function BolaoApp(){
             scorers.map(function(s,i){
               return h('div',{key:i,style:{display:'flex',alignItems:'center',gap:6,fontSize:12,marginBottom:4,padding:'4px 6px',background:i===0?'#16243e':'transparent',borderRadius:5}},
                 h('span',{style:{color:'#facc15',fontWeight:700,minWidth:14,fontSize:11}},i+1+'.'),
+                flagImg(s.team,18),
                 h('div',{style:{flex:1,minWidth:0}},
                   h('div',{style:{color:'#e2e8f0',fontWeight:600,fontSize:11,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},
                     s.name,
