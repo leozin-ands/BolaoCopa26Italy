@@ -820,17 +820,34 @@ function BolaoApp(){
   // ── GUESSES TAB ─────────────────────────────────────────────────────────
   var s_gst=useState('today'); var gSubTab=s_gst[0],setGSubTab=s_gst[1];
   var s_gf2=useState('ALL');   var gFilter2=s_gf2[0],setGFilter2=s_gf2[1];
+  var s_gst2=useState('upcoming'); var gAllSubTab=s_gst2[0],setGAllSubTab=s_gst2[1];
 
   // Matches for "Palpites do Dia"
   var todayGuessMatches=useMemo(function(){
     return MATCH_LIST.filter(function(m){return m.date===todayStr;});
   },[todayStr]);
 
-  // Matches for "Todos" — all matches grouped by date
-  var allGuessMatches=useMemo(function(){
+  // Helper: has this match already finished? (real result stored, or ESPN says final)
+  function isMatchDone(m){
+    var fk=fbkey(mkey(m));
+    var real=merged[fk];
+    if(real&&real.sa!==null&&real.sb!==null)return true;
+    var ev=espnEvents.find(function(e){return e.homeTeam===m.team_a&&e.awayTeam===m.team_b;});
+    return !!(ev&&ev.isFinal);
+  }
+
+  // Matches for "Todos" — filtered by group, then split into upcoming/finished
+  var allGuessMatchesByGroup=useMemo(function(){
     if(gFilter2==='ALL') return MATCH_LIST;
     return MATCH_LIST.filter(function(m){return m.grupo===gFilter2;});
   },[gFilter2]);
+
+  var allGuessMatches=useMemo(function(){
+    return allGuessMatchesByGroup.filter(function(m){
+      var done=isMatchDone(m);
+      return gAllSubTab==='upcoming' ? !done : done;
+    });
+  },[allGuessMatchesByGroup,gAllSubTab,merged,espnEvents]);
 
   function GuessMatchCard(m){
     var k=mkey(m),fk=fbkey(k);
@@ -929,9 +946,26 @@ function BolaoApp(){
 
     // SUB-TAB: Todos (grouped by date with group filter)
     gSubTab==='all'?h('div',null,
+      // Upcoming / Finished inner sub-tabs
+      h('div',{style:{display:'flex',gap:0,marginBottom:14,background:'#16243e',borderRadius:10,padding:4,width:'fit-content'}},
+        h('button',{
+          onClick:function(){setGAllSubTab('upcoming');},
+          style:{padding:'7px 16px',borderRadius:8,border:'none',cursor:'pointer',fontFamily:'inherit',
+            fontWeight:700,fontSize:12,transition:'all .2s',
+            background:gAllSubTab==='upcoming'?'#facc15':'transparent',
+            color:gAllSubTab==='upcoming'?'#0d1b34':'#94a3b8'}
+        },'⏳ A Realizar'),
+        h('button',{
+          onClick:function(){setGAllSubTab('finished');},
+          style:{padding:'7px 16px',borderRadius:8,border:'none',cursor:'pointer',fontFamily:'inherit',
+            fontWeight:700,fontSize:12,transition:'all .2s',
+            background:gAllSubTab==='finished'?'#facc15':'transparent',
+            color:gAllSubTab==='finished'?'#0d1b34':'#94a3b8'}
+        },'✅ Finalizados')
+      ),
       // Group filter
       h('div',{style:{display:'flex',gap:6,flexWrap:'wrap',marginBottom:16}},
-        ['ALL',...GROUPS].map(function(g){
+        ['ALL'].concat(GROUPS).map(function(g){
           return h('button',{key:g,className:'fbtn'+(gFilter2===g?' active':''),
             onClick:function(){setGFilter2(g);}},
             g==='ALL'?'Todos':'Grupo '+g
@@ -939,14 +973,17 @@ function BolaoApp(){
         })
       ),
       // Matches by date
-      Object.entries(allGuessesByDate).map(function(entry){
-        var date=entry[0],matches=entry[1];
-        return h('div',{key:date,style:{marginBottom:20}},
-          h('div',{style:{fontSize:11,fontWeight:700,color:'#facc15',textTransform:'uppercase',
-            letterSpacing:2,marginBottom:8,paddingBottom:5,borderBottom:'1px solid #243356'}},'📅 '+date),
-          matches.map(function(m){return GuessMatchCard(m);})
-        );
-      })
+      allGuessMatches.length===0
+        ?h('div',{style:{textAlign:'center',color:'#64748b',padding:'40px 0',fontSize:14}},
+            gAllSubTab==='upcoming'?'Nenhum jogo a realizar 🗓':'Nenhum jogo finalizado ainda ✅')
+        :Object.entries(allGuessesByDate).map(function(entry){
+            var date=entry[0],matches=entry[1];
+            return h('div',{key:date,style:{marginBottom:20}},
+              h('div',{style:{fontSize:11,fontWeight:700,color:'#facc15',textTransform:'uppercase',
+                letterSpacing:2,marginBottom:8,paddingBottom:5,borderBottom:'1px solid #243356'}},'📅 '+date),
+              matches.map(function(m){return GuessMatchCard(m);})
+            );
+          })
     ):null
   );
 
