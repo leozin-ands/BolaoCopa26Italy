@@ -291,15 +291,21 @@ function useESPN(){
         var isFin=sn==='STATUS_FINAL'||sn==='STATUS_FULL_TIME'||sn==='STATUS_END_PERIOD';
         var isLv=sn==='STATUS_IN_PROGRESS';
         var isHalf=sn==='STATUS_HALFTIME';
-        // Extract goal scorers
+        // Extract goal scorers — det.team only has {id}, so match against home/away to get the name
         (comp.details||[]).forEach(function(det){
           if(!det.scoringPlay||det.shootout)return;
           var ath=(det.athletesInvolved||[])[0];
           if(!ath)return;
           var nm=ath.displayName||ath.fullName||'';
-          var teamRaw=(det.team&&det.team.displayName)||'';
-          var team=EM[teamRaw]||teamRaw||'';
           if(!nm)return;
+          var detTeamId=det.team&&det.team.id;
+          var teamRaw='';
+          if(detTeamId&&home.team&&String(home.team.id)===String(detTeamId)){
+            teamRaw=home.team.displayName||'';
+          }else if(detTeamId&&away.team&&String(away.team.id)===String(detTeamId)){
+            teamRaw=away.team.displayName||'';
+          }
+          var team=EM[teamRaw]||teamRaw||'';
           if(!gmap[nm])gmap[nm]={name:nm,team:team,goals:0};
           gmap[nm].goals++;
         });
