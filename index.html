@@ -268,6 +268,7 @@ function useESPN(){
   var s2=useState([]);   var scorers=s2[0],setScorers=s2[1];
   var s3=useState({});   var standings=s3[0],setStandings=s3[1];
   var s4=useState(null); var lastUp=s4[0],setLastUp=s4[1];
+  var s6=useState([]);   var allScorers=s6[0],setAllScorers=s6[1];
 
   var fetchScores=useCallback(function(){
     var brt=new Date(Date.now()-3*3600000);
@@ -327,11 +328,13 @@ function useESPN(){
       setEvents(evts);
       setLastUp(new Date());
       // Update scorers from all completed matches
-      var list=Object.keys(gmap).map(function(k){return gmap[k];})
+      var fullList=Object.keys(gmap).map(function(k){return gmap[k];})
         .filter(function(x){return x.goals>0;})
-        .sort(function(a,b){return b.goals-a.goals;})
-        .slice(0,10);
-      if(list.length)setScorers(list);
+        .sort(function(a,b){return b.goals-a.goals;});
+      if(fullList.length){
+        setScorers(fullList.slice(0,10));
+        setAllScorers(fullList);
+      }
       // Auto-save finals to Firebase
       evts.forEach(function(ev){
         if(!ev.isFinal||!_db)return;
@@ -366,7 +369,7 @@ function useESPN(){
     return function(){clearInterval(t1);clearInterval(t2);};
   },[]);
 
-  return{espnEvents:espnEvents,scorers:scorers,standings:standings,lastUp:lastUp};
+  return{espnEvents:espnEvents,scorers:scorers,allScorers:allScorers,standings:standings,lastUp:lastUp};
 }
 
 
@@ -381,6 +384,7 @@ function BolaoApp(){
   var espn=useESPN();
   var espnEvents=espn.espnEvents;
   var scorers=espn.scorers;
+  var allScorers=espn.allScorers;
   var espnStandings=espn.standings;
   var lastUp=espn.lastUp;
 
@@ -994,6 +998,37 @@ function BolaoApp(){
   );
 
 
+  // ── SCORERS (ARTILHEIROS) TAB ───────────────────────────────────────────
+  var scorersTab=h('div',null,
+    h('div',{style:{marginBottom:14,fontSize:12,color:'#94a3b8',display:'flex',alignItems:'center',gap:6}},
+      h('span',{style:{width:8,height:8,borderRadius:'50%',background:'#ef4444',display:'inline-block',animation:'pulse 1.5s infinite'}}),
+      'Artilheiros atualizados em tempo real',
+      lastUp?h('span',{style:{marginLeft:8,color:'#4a6090'}},'• '+lastUp.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})):null
+    ),
+    (!allScorers||allScorers.length===0)
+      ?h('div',{style:{textAlign:'center',color:'#64748b',padding:'60px 0',fontSize:14}},'⚽ Nenhum gol registrado ainda')
+      :h('div',{style:{background:'#1a2d52',borderRadius:12,border:'1px solid #243356',overflow:'hidden'}},
+          allScorers.map(function(s,i){
+            return h('div',{key:i,style:{
+              display:'flex',alignItems:'center',gap:10,padding:'10px 16px',
+              borderBottom:i<allScorers.length-1?'1px solid #243356':'none',
+              background:i===0?'#1c1a00':i===1?'#16243e':i===2?'#1a1e2e':'transparent'
+            }},
+              h('span',{style:{
+                color:i<3?'#facc15':'#64748b',fontWeight:800,minWidth:28,fontSize:14,textAlign:'center'
+              }},i+1+'.'),
+              flagImg(s.team,24),
+              h('div',{style:{flex:1,minWidth:0}},
+                h('div',{style:{color:'#e2e8f0',fontWeight:700,fontSize:14,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},s.name),
+                h('div',{style:{color:'#94a3b8',fontWeight:400,fontSize:11,marginTop:1}},s.team?s.team.toUpperCase():'')
+              ),
+              h('span',{style:{color:'#facc15',fontWeight:800,fontSize:18,minWidth:30,textAlign:'right'}},s.goals),
+              h('span',{style:{fontSize:14,color:'#facc15',marginLeft:2}},'⚽')
+            );
+          })
+        )
+  );
+
   // ── HEADER ──────────────────────────────────────────────────────────────
   var header=h('div',{style:{background:'linear-gradient(135deg,#1a3a8a 0%,#0d1b34 100%)',borderBottom:'2px solid #facc15'}},
     h('div',{style:{maxWidth:1200,margin:'0 auto',padding:'14px 20px 0'}},
@@ -1050,7 +1085,7 @@ function BolaoApp(){
         })
       ),
       h('div',{style:{display:'flex',overflowX:'auto',borderTop:'1px solid #16243e',marginTop:0,paddingTop:0}},
-        [['ranking','🏅 Ranking'],['guesses','👀 Palpites'],['results','⚽ Resultados'],['groups','🌍 Grupos']].map(function(t){
+        [['ranking','🏅 Ranking'],['guesses','👀 Palpites'],['results','⚽ Resultados'],['scorers','👟 Artilheiros'],['groups','🌍 Grupos']].map(function(t){
           return h('button',{key:t[0],className:'tab-btn'+(tab===t[0]?' active':''),onClick:function(){setTab(t[0]);}},t[1]);
         })
       )
@@ -1062,7 +1097,7 @@ function BolaoApp(){
   return h('div',{style:{fontFamily:"'Segoe UI',system-ui,sans-serif",background:'#0d1b34',minHeight:'100vh',color:'#fff',paddingBottom:40}},
     modal,header,
     h('div',{style:{maxWidth:1200,margin:'0 auto',padding:'18px 16px'}},
-      tab==='ranking'?rankingTab:tab==='guesses'?guessesTab:tab==='results'?resultsTab:classTab
+      tab==='ranking'?rankingTab:tab==='guesses'?guessesTab:tab==='results'?resultsTab:tab==='scorers'?scorersTab:classTab
     )
   );
 }
