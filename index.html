@@ -439,7 +439,7 @@ function BolaoApp(){
   // Scores
   var scores=useMemo(function(){
     var t={};
-    RAW.forEach(function(p){t[p.name]={match:0,total:0};});
+    RAW.forEach(function(p){t[p.name]={match:0,group:0,total:0};});
     MATCH_LIST.forEach(function(m){
       var real=merged[fbkey(mkey(m))];
       if(!real||real.sa===null||real.sb===null)return;
@@ -458,12 +458,33 @@ function BolaoApp(){
         if(g)t[p.name].match+=calcPts(real,g);
       });
     });
-    Object.keys(t).forEach(function(n){t[n].total=t[n].match;});
+
+    // ── Bonus: +5 pts for correctly guessing the group LEADER, +5 for the RUNNER-UP ──
+    // Uses real standings (live/partial, based on completed matches) vs each
+    // participant's simulated standings (based purely on their own guesses).
+    GROUPS.forEach(function(g){
+      var realRows=(Object.keys(espnStandings).length>0&&espnStandings[g]&&espnStandings[g].length>0)
+        ? espnStandings[g]
+        : computeGroupRows(g,function(m){return merged[fbkey(mkey(m))];});
+      var realLeader =realRows[0]&&realRows[0].team;
+      var realRunnerUp=realRows[1]&&realRows[1].team;
+      if(!realLeader&&!realRunnerUp)return; // no data yet for this group
+
+      RAW.forEach(function(p){
+        var pRows=computeGroupRows(g,function(m){return LOOKUP[p.name][mkey(m)];});
+        var pLeader =pRows[0]&&pRows[0].team;
+        var pRunnerUp=pRows[1]&&pRows[1].team;
+        if(realLeader&&pLeader&&pLeader===realLeader)     t[p.name].group+=5;
+        if(realRunnerUp&&pRunnerUp&&pRunnerUp===realRunnerUp) t[p.name].group+=5;
+      });
+    });
+
+    Object.keys(t).forEach(function(n){t[n].total=t[n].match+t[n].group;});
     return t;
-  },[merged]);
+  },[merged,espnStandings]);
 
   var ranked=useMemo(function(){
-    return Object.entries(scores).sort(function(a,b){return b[1].total-a[1].total;}).map(function(x,i){return{rank:i+1,name:x[0],total:x[1].total,match:x[1].match};});
+    return Object.entries(scores).sort(function(a,b){return b[1].total-a[1].total;}).map(function(x,i){return{rank:i+1,name:x[0],total:x[1].total,match:x[1].match,group:x[1].group};});
   },[scores]);
 
   var completedCount=useMemo(function(){
@@ -770,14 +791,21 @@ function BolaoApp(){
           i===2?h('div',{style:{fontSize:11,color:'#cd7f32',marginTop:2,fontWeight:600}},'🥉 Prêmio: R$150,00'):null
         ),
         (i===0&&r.name==='Luiz Balestero')?h('div',{style:{flex:1,textAlign:'center',color:'#facc15',fontWeight:700,fontSize:13}},'Luiz líder? É máfia!'):null,
-        h('div',{style:{textAlign:'right',minWidth:52}},h('div',{style:{fontSize:22,fontWeight:800,color:'#facc15'}},r.total),h('div',{style:{fontSize:10,color:'#64748b'}},'pts')),
+        h('div',{style:{textAlign:'right',minWidth:52}},
+          h('div',{style:{fontSize:22,fontWeight:800,color:'#facc15'}},r.total),
+          h('div',{style:{fontSize:10,color:'#64748b'}},'pts'),
+          r.group>0?h('div',{style:{fontSize:9,color:'#3b82f6',fontWeight:700,marginTop:1}},'+'+r.group+' grupo'):null
+        ),
         h('div',{style:{width:80,background:'#0d1b34',borderRadius:6,height:6,overflow:'hidden'}},h('div',{style:{width:Math.min(100,(r.total/(MATCH_LIST.length*5))*100)+'%',height:'100%',background:'linear-gradient(90deg,#facc15,#f59e0b)',borderRadius:6}}))
       );
     })
   );
 
   // ── CLASSIFICATION TAB ───────────────────────────────────────────────────
-  function StandingsTable(g,rows){
+  function StandingsTable(g,rows,realRows){
+    // realRows (optional): when provided, mark 1st/2nd place as ✓ HIT or ✗ MISS vs reality
+    var realLeader=realRows&&realRows[0]&&realRows[0].team;
+    var realRunnerUp=realRows&&realRows[1]&&realRows[1].team;
     return h('div',{key:g,style:{background:'#1a2d52',borderRadius:10,overflow:'hidden',border:'1px solid #243356'}},
       h('div',{style:{background:'#16243e',padding:'8px 14px',fontWeight:800,color:'#facc15',fontSize:14,borderBottom:'1px solid #243356'}},'Grupo '+g),
       h('table',{style:{width:'100%',borderCollapse:'collapse',fontSize:12}},
@@ -785,11 +813,22 @@ function BolaoApp(){
           ['Seleção','J','V','E','D','GP','GC','Pts'].map(function(hd,i){return h('th',{key:hd,style:{padding:'5px '+(i===0?'10px':'5px'),textAlign:i===0?'left':'center',color:'#64748b',fontWeight:600,minWidth:i===0?undefined:20}},hd);})
         )),
         h('tbody',null,rows.map(function(t,i){
+          var badge=null;
+          if(realRows&&i<2){
+            var isHit=(i===0&&t.team===realLeader)||(i===1&&t.team===realRunnerUp);
+            badge=h('span',{style:{marginLeft:5,fontSize:9,
+              background:isHit?'#052e16':'#3b0f0f',
+              color:isHit?'#22c55e':'#ef4444',
+              padding:'1px 5px',borderRadius:8,fontWeight:700}},
+              isHit?'✓ +5':'✗');
+          }else if(i<2){
+            badge=h('span',{style:{marginLeft:5,fontSize:9,background:'#052e16',color:'#22c55e',padding:'1px 5px',borderRadius:8,fontWeight:700}},'✓');
+          }
           return h('tr',{key:i,style:{background:i%2===0?'#1a2d52':'#16243e',borderTop:'1px solid #1e3050'}},
             h('td',{style:{padding:'6px 10px',fontWeight:i<2?700:400,color:i<2?'#fff':'#94a3b8',whiteSpace:'nowrap'}},
               h('span',{style:{marginRight:5,display:'inline-flex',alignItems:'center',verticalAlign:'middle'}},t.logo?h('img',{src:t.logo,style:{width:20,height:15,objectFit:'cover',borderRadius:2}}):flagImg(t.team,20)),
               t.team,
-              i<2?h('span',{style:{marginLeft:5,fontSize:9,background:'#052e16',color:'#22c55e',padding:'1px 5px',borderRadius:8,fontWeight:700}},'✓'):null
+              badge
             ),
             [t.played||t.j,t.wins||t.v,t.draws||t.e,t.losses||t.d,t.gf||t.gp,t.ga||t.gc,t.pts].map(function(v,j){
               return h('td',{key:j,style:{padding:'6px 5px',textAlign:'center',color:j===6?'#facc15':'#94a3b8',fontWeight:j===6?700:400}},v||0);
@@ -859,7 +898,9 @@ function BolaoApp(){
     // ── SUB-TAB: Por Participante (simulação 100% baseada nos palpites) ───
     classSubTab==='participant'?h('div',null,
       h('div',{style:{marginBottom:14,fontSize:12,color:'#94a3b8'}},
-        'Classificação calculada usando somente os palpites do participante selecionado (não usa resultados reais).'
+        'Classificação calculada usando somente os palpites do participante selecionado. ',
+        h('span',{style:{color:'#3b82f6',fontWeight:700}},'+5 pts'),' se acertar o líder do grupo, ',
+        h('span',{style:{color:'#3b82f6',fontWeight:700}},'+5 pts'),' se acertar o vice — somado ao total do Ranking.'
       ),
       h('div',{style:{marginBottom:16}},
         h('select',{
@@ -874,7 +915,10 @@ function BolaoApp(){
       h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:14}},
         GROUPS.map(function(g){
           var rows=computeGroupRows(g,function(m){return LOOKUP[classParticipant][mkey(m)];});
-          return StandingsTable(g,rows);
+          var realRows=(Object.keys(espnStandings).length>0&&espnStandings[g]&&espnStandings[g].length>0)
+            ? espnStandings[g]
+            : computeGroupRows(g,function(m){return merged[fbkey(mkey(m))];});
+          return StandingsTable(g,rows,realRows);
         })
       )
     ):null
@@ -1108,7 +1152,7 @@ function BolaoApp(){
       // LEGEND + TABS
       h('div',{style:{padding:'8px 0 6px',display:'flex',flexWrap:'wrap',gap:6,alignItems:'center',justifyContent:'center',borderTop:'1px solid #16243e'}},
         h('span',{style:{fontSize:10,color:'#64748b',marginRight:2,fontWeight:600,letterSpacing:.5}},'PONTUAÇÃO:'),
-        [['#22c55e','5pts','Placar exato'],['#3b82f6','4pts','Vencedor+saldo'],['#f59e0b','2pts','Só vencedor'],['#ef4444','0pts','Errou']].map(function(leg,li){
+        [['#22c55e','5pts','Placar exato'],['#3b82f6','4pts','Vencedor+saldo'],['#f59e0b','2pts','Só vencedor'],['#ef4444','0pts','Errou'],['#3b82f6','+5pts','Acertou líder/vice do grupo']].map(function(leg,li){
           return h('div',{key:li,style:{display:'flex',alignItems:'center',gap:4,padding:'2px 8px',background:'#16243e',borderRadius:20,border:'1px solid #1e3050'}},
             h('span',{style:{width:7,height:7,borderRadius:'50%',background:leg[0],display:'inline-block',flexShrink:0}}),
             h('span',{style:{fontSize:10,color:leg[0],fontWeight:700}},leg[1]),
