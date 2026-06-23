@@ -1110,6 +1110,41 @@ function BolaoApp(){
   );
 
 
+  // ── Estado para palpites do mata-mata ───────────────────────────────────
+  var s_kop=useState(null); var koPickMatch=s_kop[0],setKoPickMatch=s_kop[1]; // {id,ta,tb} do jogo selecionado
+  var s_kos=useState(''); var koSelectedName=s_kos[0],setKoSelectedName=s_kos[1]; // participante escolhido
+  var s_koa=useState(''); var koGuessA=s_koa[0],setKoGuessA=s_koa[1];
+  var s_kob=useState(''); var koGuessB=s_kob[0],setKoGuessB=s_kob[1];
+  var s_kow=useState(''); var koGuessWho=s_kow[0],setKoGuessWho=s_kow[1]; // 'A' ou 'B' se empate
+  var s_koc=useState(false); var koConfirming=s_koc[0],setKoConfirming=s_koc[1];
+  var s_kog=useState({}); var koGuesses=s_kog[0],setKoGuesses=s_kog[1]; // palpites salvos {matchId: {participantName: {sa,sb,who}}}
+  var s_kov=useState(null); var koViewMatch=s_kov[0],setKoViewMatch=s_kov[1]; // qual jogo está com a lista de palpites expandida
+
+  // Sync mata-mata guesses from Firebase
+  useEffect(function(){
+    if(!_db)return;
+    _db.ref('ko_guesses').on('value',function(snap){setKoGuesses(snap.val()||{});});
+  },[]);
+
+  function saveKoGuess(matchId,participantName,sa,sb,who){
+    if(!_db)return;
+    var path='ko_guesses/'+matchId+'/'+participantName.replace(/[.#$\[\]\/]/g,'_');
+    _db.ref(path).set({sa:sa,sb:sb,who:who||null,ts:Date.now()});
+  }
+
+  // Janela de envio: confronto precisa ter os 2 times definidos E
+  // faltar mais de 30 minutos para o horário marcado do jogo.
+  function koMatchOpen(matchId,ta,tb,dateStr,timeStr){
+    if(!ta||!tb)return false; // confronto ainda não confirmado
+    if(!dateStr||!timeStr)return true; // sem data definida ainda, libera
+    var parts=dateStr.split('/'); var dd=parseInt(parts[0]),mm=parseInt(parts[1]);
+    var tparts=timeStr.replace('h',':').split(':'); var hh=parseInt(tparts[0]),min=tparts[1]?parseInt(tparts[1]):0;
+    var year=new Date().getFullYear();
+    var matchDate=new Date(year,mm-1,dd,hh,min);
+    var cutoff=new Date(matchDate.getTime()-30*60000); // 30 min antes
+    return new Date()<cutoff;
+  }
+
   // ── BRACKET (MATA-MATA) — desenho estilo ESPN, 5 colunas ───────────────────
   // Estrutura oficial completa: Rodada de 32 (16 jogos) → Oitavas (8) →
   // Quartas (4) → Semis (2) → 3º lugar + Final. IDs/datas conforme FIFA/ESPN.
@@ -1202,14 +1237,46 @@ function BolaoApp(){
       }
 
       function MatchCard(id,ta,tb,labelA,labelB,date,time){
-        return h('div',{key:id,style:{background:'#1a2d52',borderRadius:8,border:'1px solid #243356',overflow:'hidden',minWidth:170,marginBottom:14}},
-          h('div',{style:{fontSize:8,color:'#64748b',padding:'3px 8px',background:'#16243e',display:'flex',justifyContent:'space-between'}},
+        var isOpen=koMatchOpen(id,ta,tb,date,time);
+        var isConfirmed=!!(ta&&tb);
+        var myGuesses=koGuesses[id]||{};
+        var guessCount=Object.keys(myGuesses).length;
+        return h('div',{key:id,style:{background:'#1a2d52',borderRadius:8,border:'1px solid '+(isOpen?'#facc15':'#243356'),overflow:'hidden',minWidth:170,marginBottom:14}},
+          h('div',{style:{fontSize:8,color:'#64748b',padding:'3px 8px',background:'#16243e',display:'flex',justifyContent:'space-between',alignItems:'center'}},
             h('span',null,id),
             h('span',null,(date||'')+(time?' · '+time:''))
           ),
           MiniTeam(ta,labelA),
           h('div',{style:{height:1,background:'#243356'}}),
-          MiniTeam(tb,labelB)
+          MiniTeam(tb,labelB),
+          // Cadeado / status de palpites
+          h('div',{
+            onClick:function(){
+              if(isOpen){ setKoPickMatch({id:id,ta:ta,tb:tb}); setKoSelectedName(''); setKoGuessA(''); setKoGuessB(''); setKoGuessWho(''); setKoConfirming(false); }
+              else if(isConfirmed&&guessCount>0){ setKoViewMatch(koViewMatch===id?null:id); }
+            },
+            style:{
+              display:'flex',alignItems:'center',justifyContent:'center',gap:5,
+              padding:'5px 8px',fontSize:10,fontWeight:700,
+              cursor:(isOpen||(isConfirmed&&guessCount>0))?'pointer':'default',
+              background:isOpen?'#3d2f00':'#0d1b34',
+              color:isOpen?'#facc15':isConfirmed?'#64748b':'#3a4760',
+              borderTop:'1px solid #243356'
+            }
+          },
+            isOpen?'🔓 Palpitar':isConfirmed?(guessCount>0?'🔒 Ver palpites':'🔒 Encerrado'):'🔒 Aguardando confronto',
+            isConfirmed?h('span',{style:{marginLeft:4,color:'#4a6090',fontWeight:400}},'('+guessCount+'/'+RAW.length+')'):null
+          ),
+          // Lista de palpites visível quando expandido (após prazo encerrado)
+          (koViewMatch===id&&!isOpen&&guessCount>0)?h('div',{style:{background:'#0d1b34',padding:'6px 8px',borderTop:'1px solid #243356',maxHeight:160,overflowY:'auto'}},
+            Object.keys(myGuesses).sort().map(function(nm){
+              var g=myGuesses[nm];
+              return h('div',{key:nm,style:{fontSize:10,color:'#94a3b8',display:'flex',justifyContent:'space-between',padding:'2px 0'}},
+                h('span',null,nm),
+                h('span',{style:{color:'#facc15',fontWeight:700}},g.sa+'×'+g.sb+(g.who?' ('+(g.who==='A'?labelA:labelB)+')':''))
+              );
+            })
+          ):null
         );
       }
 
@@ -1258,6 +1325,81 @@ function BolaoApp(){
       );
     })()
   );
+
+  // ── Modal de palpite do mata-mata ───────────────────────────────────────
+  var koModal=koPickMatch?h('div',{
+    style:{position:'fixed',inset:0,background:'rgba(0,0,0,.7)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center',padding:16},
+    onClick:function(e){if(e.target===e.currentTarget)setKoPickMatch(null);}
+  },
+    h('div',{style:{background:'#1a2d52',borderRadius:14,padding:20,width:'100%',maxWidth:360,border:'1px solid #3a5490'}},
+      h('div',{style:{fontSize:14,fontWeight:800,color:'#facc15',marginBottom:4}},'Palpite — '+koPickMatch.id),
+      h('div',{style:{fontSize:12,color:'#94a3b8',marginBottom:16,display:'flex',alignItems:'center',gap:6}},
+        flagImg(koPickMatch.ta&&koPickMatch.ta.team,16),koPickMatch.ta&&koPickMatch.ta.team,
+        h('span',{style:{color:'#4a6090'}},'×'),
+        flagImg(koPickMatch.tb&&koPickMatch.tb.team,16),koPickMatch.tb&&koPickMatch.tb.team
+      ),
+
+      !koSelectedName?h('div',null,
+        h('div',{style:{fontSize:12,color:'#94a3b8',marginBottom:8}},'Quem é você?'),
+        h('select',{
+          value:koSelectedName,
+          onChange:function(e){setKoSelectedName(e.target.value);},
+          style:{width:'100%',background:'#0d1b34',border:'1px solid #3a5490',borderRadius:8,color:'#fff',fontSize:14,padding:'10px 12px',fontFamily:'inherit'}
+        },
+          h('option',{value:''},'— Selecione seu nome —'),
+          RAW.map(function(p){return h('option',{key:p.name,value:p.name},p.name);})
+        )
+      ):
+      !koConfirming?h('div',null,
+        h('div',{style:{fontSize:12,color:'#94a3b8',marginBottom:10}},'Palpite de ',h('strong',{style:{color:'#facc15'}},koSelectedName)),
+        h('div',{style:{display:'flex',alignItems:'center',gap:10,marginBottom:12,justifyContent:'center'}},
+          h('input',{type:'number',min:0,max:20,value:koGuessA,
+            onChange:function(e){setKoGuessA(e.target.value);},
+            style:{width:60,textAlign:'center',background:'#0d1b34',border:'1px solid #3a5490',borderRadius:8,color:'#facc15',fontWeight:800,fontSize:20,padding:'8px 4px'}}),
+          h('span',{style:{color:'#64748b',fontSize:16}},'×'),
+          h('input',{type:'number',min:0,max:20,value:koGuessB,
+            onChange:function(e){setKoGuessB(e.target.value);},
+            style:{width:60,textAlign:'center',background:'#0d1b34',border:'1px solid #3a5490',borderRadius:8,color:'#facc15',fontWeight:800,fontSize:20,padding:'8px 4px'}})
+        ),
+        (koGuessA!==''&&koGuessB!==''&&koGuessA===koGuessB)?h('div',{style:{marginBottom:12}},
+          h('div',{style:{fontSize:11,color:'#94a3b8',marginBottom:6,textAlign:'center'}},'Empate — quem avança nos pênaltis?'),
+          h('div',{style:{display:'flex',gap:8}},
+            h('button',{onClick:function(){setKoGuessWho('A');},style:{flex:1,padding:'8px',borderRadius:8,border:'1px solid '+(koGuessWho==='A'?'#facc15':'#3a5490'),background:koGuessWho==='A'?'#3d2f00':'#16243e',color:koGuessWho==='A'?'#facc15':'#94a3b8',fontWeight:700,fontSize:12,cursor:'pointer',fontFamily:'inherit'}},koPickMatch.ta&&koPickMatch.ta.team),
+            h('button',{onClick:function(){setKoGuessWho('B');},style:{flex:1,padding:'8px',borderRadius:8,border:'1px solid '+(koGuessWho==='B'?'#facc15':'#3a5490'),background:koGuessWho==='B'?'#3d2f00':'#16243e',color:koGuessWho==='B'?'#facc15':'#94a3b8',fontWeight:700,fontSize:12,cursor:'pointer',fontFamily:'inherit'}},koPickMatch.tb&&koPickMatch.tb.team)
+          )
+        ):null,
+        h('div',{style:{display:'flex',gap:8,marginTop:16}},
+          h('button',{onClick:function(){setKoPickMatch(null);},style:{flex:1,padding:'10px',background:'#243356',border:'none',borderRadius:8,color:'#94a3b8',fontWeight:600,cursor:'pointer',fontSize:13,fontFamily:'inherit'}},'Cancelar'),
+          h('button',{
+            disabled:koGuessA===''||koGuessB===''||(koGuessA===koGuessB&&!koGuessWho),
+            onClick:function(){setKoConfirming(true);},
+            style:{flex:1,padding:'10px',background:(koGuessA===''||koGuessB===''||(koGuessA===koGuessB&&!koGuessWho))?'#3a3f4a':'#facc15',border:'none',borderRadius:8,color:'#0d1b34',fontWeight:800,cursor:'pointer',fontSize:13,fontFamily:'inherit'}
+          },'Continuar')
+        )
+      ):
+      h('div',null,
+        h('div',{style:{background:'#3b0f0f',border:'1px solid #ef4444',borderRadius:8,padding:'12px',marginBottom:14,fontSize:12,color:'#fca5a5'}},
+          '⚠️ Atenção: depois de confirmar, este palpite ',
+          h('strong',null,'não poderá ser corrigido'),
+          '. Confira bem antes de continuar.'
+        ),
+        h('div',{style:{textAlign:'center',fontSize:24,fontWeight:800,color:'#facc15',marginBottom:14}},
+          koGuessA+' × '+koGuessB,
+          (koGuessA===koGuessB)?h('div',{style:{fontSize:11,color:'#94a3b8',marginTop:6,fontWeight:400}},'Avança: '+(koGuessWho==='A'?(koPickMatch.ta&&koPickMatch.ta.team):(koPickMatch.tb&&koPickMatch.tb.team))):null
+        ),
+        h('div',{style:{display:'flex',gap:8}},
+          h('button',{onClick:function(){setKoConfirming(false);},style:{flex:1,padding:'10px',background:'#243356',border:'none',borderRadius:8,color:'#94a3b8',fontWeight:600,cursor:'pointer',fontSize:13,fontFamily:'inherit'}},'Voltar'),
+          h('button',{
+            onClick:function(){
+              saveKoGuess(koPickMatch.id,koSelectedName,parseInt(koGuessA),parseInt(koGuessB),koGuessWho||null);
+              setKoPickMatch(null);
+            },
+            style:{flex:1,padding:'10px',background:'#22c55e',border:'none',borderRadius:8,color:'#052e16',fontWeight:800,cursor:'pointer',fontSize:13,fontFamily:'inherit'}
+          },'✅ Confirmar palpite')
+        )
+      )
+    )
+  ):null;
 
   // ── SCORERS (ARTILHEIROS) TAB ───────────────────────────────────────────
   var scorersTab=h('div',null,
@@ -1335,7 +1477,7 @@ function BolaoApp(){
   var modal=null;
 
   return h('div',{style:{fontFamily:"'Segoe UI',system-ui,sans-serif",background:'#0d1b34',minHeight:'100vh',color:'#fff',paddingBottom:40}},
-    modal,header,
+    modal,koModal,header,
     h('div',{style:{maxWidth:1200,margin:'0 auto',padding:'18px 16px'}},
       tab==='ranking'?rankingTab:tab==='guesses'?guessesTab:tab==='results'?resultsTab:tab==='scorers'?scorersTab:tab==='bracket'?bracketTab:classTab
     )
