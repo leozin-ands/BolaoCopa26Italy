@@ -1190,8 +1190,19 @@ function BolaoApp(){
     {id:'M102',a:'M99',b:'M100',date:'15/07',time:'16h'}
   ];
 
+  // Um grupo só está "fechado" quando todos os 6 jogos dele já têm resultado real.
+  // Enquanto isso não ocorre, a posição de 1º/2º ainda pode mudar — então não exibimos o time.
+  function isGroupClosed(g){
+    var matches=MATCH_LIST.filter(function(m){return m.grupo===g;});
+    return matches.length>0&&matches.every(function(m){
+      var r=merged[fbkey(mkey(m))];
+      return r&&r.sa!==null&&r.sa!==undefined&&r.sb!==null&&r.sb!==undefined;
+    });
+  }
+
   function groupSlotTeam(slot,realRows){
     if(slot.type==='3')return null; // melhor 3º — aguardando tabela oficial
+    if(!isGroupClosed(slot.g))return null; // grupo ainda não fechado — posição não está cravada
     var rows=realRows[slot.g];
     if(!rows||rows.length<2)return null;
     return slot.type==='1'?rows[0]:rows[1];
