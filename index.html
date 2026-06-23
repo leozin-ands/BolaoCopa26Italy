@@ -1110,35 +1110,53 @@ function BolaoApp(){
   );
 
 
-  // ── BRACKET (MATA-MATA) ─────────────────────────────────────────────────
-  // Estrutura oficial da Rodada de 32 (FIFA 2026). 24 dos 32 confrontos usam
-  // só 1ºs e 2ºs colocados (sempre definidos). Os outros 8 dependem dos
-  // "melhores 3ºs colocados" entre os 12 grupos — aguardando tabela oficial
-  // de combinações (495 possibilidades), mostrados como "Aguardando 3º".
-  var R32_FIXED=[
-    {id:'M73',a:{type:'2',g:'A'},b:{type:'2',g:'B'}},
-    {id:'M75',a:{type:'1',g:'F'},b:{type:'2',g:'C'}},
-    {id:'M76',a:{type:'1',g:'C'},b:{type:'2',g:'F'}},
-    {id:'M78',a:{type:'2',g:'E'},b:{type:'2',g:'I'}},
-    {id:'M83',a:{type:'2',g:'K'},b:{type:'2',g:'L'}},
-    {id:'M84',a:{type:'1',g:'H'},b:{type:'2',g:'J'}},
-    {id:'M86',a:{type:'1',g:'J'},b:{type:'2',g:'H'}},
-    {id:'M88',a:{type:'2',g:'D'},b:{type:'2',g:'G'}}
+  // ── BRACKET (MATA-MATA) — desenho estilo ESPN, 5 colunas ───────────────────
+  // Estrutura oficial completa: Rodada de 32 (16 jogos) → Oitavas (8) →
+  // Quartas (4) → Semis (2) → 3º lugar + Final. IDs/datas conforme FIFA/ESPN.
+  var R32_MATCHES=[
+    {id:'M73',a:{type:'2',g:'A'},          b:{type:'2',g:'B'},          date:'28/06',time:'16h'},
+    {id:'M74',a:{type:'1',g:'E'},          b:{type:'3',cands:['A','B','C','D','F']}, date:'29/06',time:'17h30'},
+    {id:'M75',a:{type:'1',g:'F'},          b:{type:'2',g:'C'},          date:'29/06',time:'22h'},
+    {id:'M76',a:{type:'1',g:'C'},          b:{type:'2',g:'F'},          date:'29/06',time:'14h'},
+    {id:'M77',a:{type:'1',g:'I'},          b:{type:'3',cands:['C','D','F','G','H']}, date:'30/06',time:'18h'},
+    {id:'M78',a:{type:'2',g:'E'},          b:{type:'2',g:'I'},          date:'30/06',time:'14h'},
+    {id:'M79',a:{type:'1',g:'A'},          b:{type:'3',cands:['C','E','F','H','I']}, date:'30/06',time:'22h'},
+    {id:'M80',a:{type:'1',g:'L'},          b:{type:'3',cands:['E','H','I','J','K']}, date:'01/07',time:'13h'},
+    {id:'M81',a:{type:'1',g:'D'},          b:{type:'3',cands:['B','E','F','I','J']}, date:'01/07',time:'21h'},
+    {id:'M82',a:{type:'1',g:'G'},          b:{type:'3',cands:['A','E','H','I','J']}, date:'01/07',time:'17h'},
+    {id:'M83',a:{type:'2',g:'K'},          b:{type:'2',g:'L'},          date:'02/07',time:'20h'},
+    {id:'M84',a:{type:'1',g:'H'},          b:{type:'2',g:'J'},          date:'02/07',time:'16h'},
+    {id:'M85',a:{type:'1',g:'B'},          b:{type:'3',cands:['E','F','G','I','J']}, date:'03/07',time:'00h'},
+    {id:'M86',a:{type:'1',g:'J'},          b:{type:'2',g:'H'},          date:'03/07',time:'19h'},
+    {id:'M87',a:{type:'1',g:'K'},          b:{type:'3',cands:['D','E','I','J','L']}, date:'03/07',time:'22h30'},
+    {id:'M88',a:{type:'2',g:'D'},          b:{type:'2',g:'G'},          date:'03/07',time:'15h'}
   ];
-  // Os 8 confrontos com "melhor 3º colocado" — candidatos oficiais por slot
-  var R32_THIRD=[
-    {id:'M74',a:{type:'1',g:'E'},cands:['A','B','C','D','F']},
-    {id:'M77',a:{type:'1',g:'I'},cands:['C','D','F','G','H']},
-    {id:'M79',a:{type:'1',g:'A'},cands:['C','E','F','H','I']},
-    {id:'M80',a:{type:'1',g:'L'},cands:['E','H','I','J','K']},
-    {id:'M81',a:{type:'1',g:'D'},cands:['B','E','F','I','J']},
-    {id:'M82',a:{type:'1',g:'G'},cands:['A','E','H','I','J']},
-    {id:'M85',a:{type:'1',g:'B'},cands:['E','F','G','I','J']},
-    {id:'M87',a:{type:'1',g:'K'},cands:['D','E','I','J','L']}
+  // Oitavas: pares de vencedores da Rodada de 32 (ordem oficial FIFA)
+  var R16_PAIRS=[
+    {id:'M90',a:'M73',b:'M76',date:'04/07',time:'14h'},
+    {id:'M89',a:'M75',b:'M74',date:'04/07',time:'18h'},
+    {id:'M91',a:'M78',b:'M77',date:'05/07',time:'17h'},
+    {id:'M92',a:'M80',b:'M79',date:'05/07',time:'21h'},
+    {id:'M94',a:'M82',b:'M81',date:'06/07',time:'21h'},
+    {id:'M93',a:'M84',b:'M83',date:'06/07',time:'16h'},
+    {id:'M96',a:'M86',b:'M85',date:'07/07',time:'17h'},
+    {id:'M95',a:'M88',b:'M87',date:'07/07',time:'13h'}
+  ];
+  // Quartas
+  var QF_PAIRS=[
+    {id:'M97',a:'M89',b:'M90',date:'09/07',time:'17h'},
+    {id:'M98',a:'M93',b:'M94',date:'10/07',time:'16h'},
+    {id:'M99',a:'M91',b:'M92',date:'11/07',time:'18h'},
+    {id:'M100',a:'M95',b:'M96',date:'11/07',time:'22h'}
+  ];
+  // Semis
+  var SF_PAIRS=[
+    {id:'M101',a:'M97',b:'M98',date:'14/07',time:'16h'},
+    {id:'M102',a:'M99',b:'M100',date:'15/07',time:'16h'}
   ];
 
   function groupSlotTeam(slot,realRows){
-    // slot = {type:'1'|'2', g:'A'..'L'}; realRows = computeGroupRows(g,...) result
+    if(slot.type==='3')return null; // melhor 3º — aguardando tabela oficial
     var rows=realRows[slot.g];
     if(!rows||rows.length<2)return null;
     return slot.type==='1'?rows[0]:rows[1];
@@ -1150,13 +1168,12 @@ function BolaoApp(){
       'Chaveamento projetado em tempo real com a classificação parcial dos grupos',
       lastUp?h('span',{style:{marginLeft:8,color:'#4a6090'}},'• '+lastUp.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})):null
     ),
-    h('div',{style:{background:'#1a2d52',border:'1px solid #3b82f680',borderRadius:10,padding:'10px 14px',marginBottom:16,fontSize:12,color:'#94a3b8'}},
-      '⚠️ Os 8 confrontos que dependem do "melhor 3º colocado" entre os 12 grupos ainda não puderam ser calculados automaticamente — aparecem como ',
+    h('div',{style:{background:'#1a2d52',border:'1px solid #3b82f680',borderRadius:10,padding:'10px 14px',marginBottom:18,fontSize:12,color:'#94a3b8'}},
+      '⚠️ Confrontos que dependem do "melhor 3º colocado" entre os 12 grupos aparecem como ',
       h('span',{style:{color:'#facc15',fontWeight:700}},'"Aguardando 3º"'),
-      '. Serão preenchidos assim que a fase de grupos terminar.'
+      ' — serão preenchidos assim que a tabela oficial de combinações da FIFA for confirmada.'
     ),
     (function(){
-      // Build real standings for every group, used to resolve fixed slots
       var realRowsByGroup={};
       GROUPS.forEach(function(g){
         realRowsByGroup[g]=(Object.keys(espnStandings).length>0&&espnStandings[g]&&espnStandings[g].length>0)
@@ -1164,45 +1181,79 @@ function BolaoApp(){
           : computeGroupRows(g,function(m){return merged[fbkey(mkey(m))];});
       });
 
-      function TeamCell(teamObj,label){
-        if(!teamObj)return h('div',{style:{display:'flex',alignItems:'center',gap:6,padding:'6px 10px',color:'#4b5563',fontSize:12,fontStyle:'italic'}},label||'A definir');
-        return h('div',{style:{display:'flex',alignItems:'center',gap:6,padding:'6px 10px'}},
-          flagImg(teamObj.team,18),
-          h('span',{style:{fontSize:12,fontWeight:600,color:'#e2e8f0'}},teamObj.team)
+      // Resolve each R32 match to {ta,tb} team objects (or null if undetermined)
+      var r32Resolved={};
+      R32_MATCHES.forEach(function(m){
+        r32Resolved[m.id]={
+          ta:groupSlotTeam(m.a,realRowsByGroup),
+          tb:m.b.type==='3'?null:groupSlotTeam(m.b,realRowsByGroup),
+          labelA:m.a.type+'º Grupo '+m.a.g,
+          labelB:m.b.type==='3'?'3º '+m.b.cands.join('/'):(m.b.type+'º Grupo '+m.b.g),
+          date:m.date,time:m.time
+        };
+      });
+
+      function MiniTeam(teamObj,fallbackLabel){
+        if(!teamObj)return h('div',{style:{display:'flex',alignItems:'center',gap:5,padding:'5px 8px',color:'#4b5563',fontSize:10,fontStyle:'italic',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}},fallbackLabel);
+        return h('div',{style:{display:'flex',alignItems:'center',gap:5,padding:'5px 8px',whiteSpace:'nowrap',overflow:'hidden'}},
+          flagImg(teamObj.team,16),
+          h('span',{style:{fontSize:11,fontWeight:600,color:'#e2e8f0',overflow:'hidden',textOverflow:'ellipsis'}},teamObj.team)
         );
       }
 
-      var fixedCards=R32_FIXED.map(function(m){
-        var ta=groupSlotTeam(m.a,realRowsByGroup);
-        var tb=groupSlotTeam(m.b,realRowsByGroup);
-        return h('div',{key:m.id,style:{background:'#1a2d52',borderRadius:10,border:'1px solid #243356',overflow:'hidden',marginBottom:10}},
-          h('div',{style:{fontSize:9,color:'#64748b',padding:'4px 10px',background:'#16243e',letterSpacing:1}},m.id),
-          TeamCell(ta,m.a.type+'º Grupo '+m.a.g),
+      function MatchCard(id,ta,tb,labelA,labelB,date,time){
+        return h('div',{key:id,style:{background:'#1a2d52',borderRadius:8,border:'1px solid #243356',overflow:'hidden',minWidth:170,marginBottom:14}},
+          h('div',{style:{fontSize:8,color:'#64748b',padding:'3px 8px',background:'#16243e',display:'flex',justifyContent:'space-between'}},
+            h('span',null,id),
+            h('span',null,(date||'')+(time?' · '+time:''))
+          ),
+          MiniTeam(ta,labelA),
           h('div',{style:{height:1,background:'#243356'}}),
-          TeamCell(tb,m.b.type+'º Grupo '+m.b.g)
+          MiniTeam(tb,labelB)
         );
+      }
+
+      // Column 1: Round of 32 (16 matches)
+      var col1=R32_MATCHES.map(function(m){
+        var r=r32Resolved[m.id];
+        return MatchCard(m.id,r.ta,r.tb,r.labelA,r.labelB,r.date,r.time);
       });
 
-      var thirdCards=R32_THIRD.map(function(m){
-        var ta=groupSlotTeam(m.a,realRowsByGroup);
-        return h('div',{key:m.id,style:{background:'#1a2d52',borderRadius:10,border:'1px solid #3b82f640',overflow:'hidden',marginBottom:10}},
-          h('div',{style:{fontSize:9,color:'#64748b',padding:'4px 10px',background:'#16243e',letterSpacing:1}},m.id),
-          TeamCell(ta,m.a.type+'º Grupo '+m.a.g),
-          h('div',{style:{height:1,background:'#243356'}}),
-          h('div',{style:{display:'flex',alignItems:'center',gap:6,padding:'6px 10px',color:'#3b82f6',fontSize:11,fontWeight:600}},
-            '🔄 Aguardando 3º ('+m.cands.join('/')+')'
-          )
-        );
+      // Column 2: Round of 16 (8 matches) — winners unknown until R32 is played
+      var col2=R16_PAIRS.map(function(m){
+        return MatchCard(m.id,null,null,'Venc. '+m.a,'Venc. '+m.b,m.date,m.time);
       });
 
-      return h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))',gap:14}},
-        h('div',null,
-          h('div',{style:{fontSize:12,fontWeight:700,color:'#facc15',marginBottom:8,textTransform:'uppercase',letterSpacing:1}},'Confrontos definidos (1ºs e 2ºs)'),
-          fixedCards
-        ),
-        h('div',null,
-          h('div',{style:{fontSize:12,fontWeight:700,color:'#3b82f6',marginBottom:8,textTransform:'uppercase',letterSpacing:1}},'Confrontos com melhor 3º colocado'),
-          thirdCards
+      // Column 3: Quarterfinals (4)
+      var col3=QF_PAIRS.map(function(m){
+        return MatchCard(m.id,null,null,'Venc. '+m.a,'Venc. '+m.b,m.date,m.time);
+      });
+
+      // Column 4: Semifinals (2)
+      var col4=SF_PAIRS.map(function(m){
+        return MatchCard(m.id,null,null,'Venc. '+m.a,'Venc. '+m.b,m.date,m.time);
+      });
+
+      // Column 5: 3rd place + Final
+      var col5=[
+        MatchCard('3º Lugar',null,null,'Perdedor M101','Perdedor M102','18/07','18h'),
+        MatchCard('Final',null,null,'Venc. M101','Venc. M102','19/07','16h')
+      ];
+
+      function Column(title,cards,justify){
+        return h('div',{style:{display:'flex',flexDirection:'column',justifyContent:justify||'flex-start',minWidth:180,flex:'0 0 auto'}},
+          h('div',{style:{fontSize:11,fontWeight:700,color:'#facc15',textAlign:'center',marginBottom:10,textTransform:'uppercase',letterSpacing:1,position:'sticky',top:0}},title),
+          h('div',{style:{display:'flex',flexDirection:'column',gap:0,flex:1,justifyContent:'space-around'}},cards)
+        );
+      }
+
+      return h('div',{style:{overflowX:'auto',paddingBottom:10}},
+        h('div',{style:{display:'flex',gap:16,minWidth:1000}},
+          Column('Rodada de 32',col1),
+          Column('Oitavas de Final',col2,'space-around'),
+          Column('Quartas de Final',col3,'space-around'),
+          Column('Semifinais',col4,'space-around'),
+          Column('3º Lugar / Final',col5,'space-around')
         )
       );
     })()
