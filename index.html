@@ -1119,6 +1119,9 @@ function BolaoApp(){
   var s_koc=useState(false); var koConfirming=s_koc[0],setKoConfirming=s_koc[1];
   var s_kog=useState({}); var koGuesses=s_kog[0],setKoGuesses=s_kog[1]; // palpites salvos {matchId: {participantName: {sa,sb,who}}}
   var s_kov=useState(null); var koViewMatch=s_kov[0],setKoViewMatch=s_kov[1]; // qual jogo está com a lista de palpites expandida
+  var bracketContainerRef=React.useRef(null);
+  var bracketCardRefs=React.useRef({}); // {matchId: domNode}
+  var s_bl=useState([]); var bracketLines=s_bl[0],setBracketLines=s_bl[1]; // [{x1,y1,x2,y2}]
 
   // Sync mata-mata guesses from Firebase
   useEffect(function(){
@@ -1252,7 +1255,7 @@ function BolaoApp(){
         var isConfirmed=!!(ta&&tb);
         var myGuesses=koGuesses[id]||{};
         var guessCount=Object.keys(myGuesses).length;
-        return h('div',{key:id,style:{background:'#1a2d52',borderRadius:8,border:'1px solid '+(isOpen?'#facc15':'#243356'),overflow:'hidden',minWidth:170,marginBottom:14}},
+        return h('div',{key:id,ref:function(el){if(el)bracketCardRefs.current[id]=el;},style:{background:'#1a2d52',borderRadius:8,border:'1px solid '+(isOpen?'#facc15':'#243356'),overflow:'hidden',minWidth:170,marginBottom:14}},
           h('div',{style:{fontSize:8,color:'#64748b',padding:'3px 8px',background:'#16243e',display:'flex',justifyContent:'space-between',alignItems:'center'}},
             h('span',null,id),
             h('span',null,(date||'')+(time?' · '+time:''))
@@ -1325,8 +1328,56 @@ function BolaoApp(){
         );
       }
 
-      return h('div',{style:{overflowX:'auto',paddingBottom:10}},
-        h('div',{style:{display:'flex',gap:16,minWidth:1000}},
+      // Mapa de quem alimenta quem (filho → [ids dos jogos pais])
+      var parentMap={};
+      R16_PAIRS.forEach(function(m){parentMap[m.id]=[m.a,m.b];});
+      QF_PAIRS.forEach(function(m){parentMap[m.id]=[m.a,m.b];});
+      SF_PAIRS.forEach(function(m){parentMap[m.id]=[m.a,m.b];});
+      parentMap['Final']=['M101','M102'];
+      parentMap["3º Lugar"]=['M101','M102'];
+
+      // Recalcula as linhas de conexão sempre que o layout pode ter mudado
+      React.useEffect(function(){
+        var raf=requestAnimationFrame(function(){
+          var cont=bracketContainerRef.current;
+          if(!cont)return;
+          var contRect=cont.getBoundingClientRect();
+          var lines=[];
+          Object.keys(parentMap).forEach(function(childId){
+            var childEl=bracketCardRefs.current[childId];
+            if(!childEl)return;
+            var cr=childEl.getBoundingClientRect();
+            var childY=cr.top+cr.height/2-contRect.top+cont.scrollTop;
+            var childX=cr.left-contRect.left+cont.scrollLeft;
+            parentMap[childId].forEach(function(parentId){
+              var parentEl=bracketCardRefs.current[parentId];
+              if(!parentEl)return;
+              var pr=parentEl.getBoundingClientRect();
+              var parentY=pr.top+pr.height/2-contRect.top+cont.scrollTop;
+              var parentX=pr.right-contRect.left+cont.scrollLeft;
+              lines.push({x1:parentX,y1:parentY,x2:childX,y2:childY});
+            });
+          });
+          setBracketLines(lines);
+        });
+        return function(){cancelAnimationFrame(raf);};
+      },[merged,espnStandings,koGuesses]);
+
+      return h('div',{
+          ref:function(el){bracketContainerRef.current=el;},
+          style:{overflowX:'auto',paddingBottom:10,position:'relative'}
+        },
+        // SVG overlay com as curvas de conexão entre os jogos
+        h('svg',{
+          style:{position:'absolute',top:0,left:0,width:'100%',height:'100%',pointerEvents:'none',zIndex:1},
+        },
+          bracketLines.map(function(ln,i){
+            var midX=(ln.x1+ln.x2)/2;
+            var d='M '+ln.x1+' '+ln.y1+' C '+midX+' '+ln.y1+', '+midX+' '+ln.y2+', '+ln.x2+' '+ln.y2;
+            return h('path',{key:i,d:d,stroke:'#ef4444',strokeWidth:2,fill:'none',opacity:.85});
+          })
+        ),
+        h('div',{style:{display:'flex',gap:16,minWidth:1000,position:'relative',zIndex:2}},
           Column('Rodada de 32',col1),
           Column('Oitavas de Final',col2,'space-around'),
           Column('Quartas de Final',col3,'space-around'),
