@@ -1358,8 +1358,17 @@ function BolaoApp(){
           style:{width:'100%',background:'#0d1b34',border:'1px solid #3a5490',borderRadius:8,color:'#fff',fontSize:14,padding:'10px 12px',fontFamily:'inherit'}
         },
           h('option',{value:''},'— Selecione seu nome —'),
-          RAW.map(function(p){return h('option',{key:p.name,value:p.name},p.name);})
-        )
+          RAW.filter(function(p){
+            // Só mostra quem ainda não palpitou neste confronto
+            var already=koGuesses[koPickMatch.id]||{};
+            return !already[p.name];
+          }).map(function(p){return h('option',{key:p.name,value:p.name},p.name);})
+        ),
+        (function(){
+          var already=koGuesses[koPickMatch.id]||{};
+          var pendingCount=RAW.length-Object.keys(already).length;
+          return h('div',{style:{fontSize:11,color:'#64748b',marginTop:8}},pendingCount+' de '+RAW.length+' ainda não palpitaram');
+        })()
       ):
       !koConfirming?h('div',null,
         h('div',{style:{fontSize:12,color:'#94a3b8',marginBottom:10}},'Palpite de ',h('strong',{style:{color:'#facc15'}},koSelectedName)),
