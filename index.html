@@ -1160,28 +1160,25 @@ function BolaoApp(){
     return new Date()<cutoff;
   }
 
-  // ── BRACKET (MATA-MATA) — desenho estilo ESPN, 5 colunas ───────────────────
-  // Estrutura oficial completa: Rodada de 32 (16 jogos) → Oitavas (8) →
-  // Quartas (4) → Semis (2) → 3º lugar + Final. IDs/datas conforme FIFA/ESPN.
+  // ── BRACKET (MATA-MATA) — formato simétrico estilo GE (duas metades + final no centro) ──
   var R32_MATCHES=[
     {id:'M73',a:{type:'2',g:'A'},          b:{type:'2',g:'B'},          date:'28/06',time:'16h'},
-    {id:'M76',a:{type:'1',g:'C'},          b:{type:'2',g:'F'},          date:'29/06',time:'14h'},
     {id:'M74',a:{type:'1',g:'E'},          b:{type:'3',cands:['A','B','C','D','F']}, date:'29/06',time:'17h30'},
     {id:'M75',a:{type:'1',g:'F'},          b:{type:'2',g:'C'},          date:'29/06',time:'22h'},
-    {id:'M78',a:{type:'2',g:'E'},          b:{type:'2',g:'I'},          date:'30/06',time:'14h'},
+    {id:'M76',a:{type:'1',g:'C'},          b:{type:'2',g:'F'},          date:'29/06',time:'14h'},
     {id:'M77',a:{type:'1',g:'I'},          b:{type:'3',cands:['C','D','F','G','H']}, date:'30/06',time:'18h'},
+    {id:'M78',a:{type:'2',g:'E'},          b:{type:'2',g:'I'},          date:'30/06',time:'14h'},
     {id:'M79',a:{type:'1',g:'A'},          b:{type:'3',cands:['C','E','F','H','I']}, date:'30/06',time:'22h'},
     {id:'M80',a:{type:'1',g:'L'},          b:{type:'3',cands:['E','H','I','J','K']}, date:'01/07',time:'13h'},
-    {id:'M82',a:{type:'1',g:'G'},          b:{type:'3',cands:['A','E','H','I','J']}, date:'01/07',time:'17h'},
     {id:'M81',a:{type:'1',g:'D'},          b:{type:'3',cands:['B','E','F','I','J']}, date:'01/07',time:'21h'},
-    {id:'M84',a:{type:'1',g:'H'},          b:{type:'2',g:'J'},          date:'02/07',time:'16h'},
+    {id:'M82',a:{type:'1',g:'G'},          b:{type:'3',cands:['A','E','H','I','J']}, date:'01/07',time:'17h'},
     {id:'M83',a:{type:'2',g:'K'},          b:{type:'2',g:'L'},          date:'02/07',time:'20h'},
+    {id:'M84',a:{type:'1',g:'H'},          b:{type:'2',g:'J'},          date:'02/07',time:'16h'},
     {id:'M85',a:{type:'1',g:'B'},          b:{type:'3',cands:['E','F','G','I','J']}, date:'03/07',time:'00h'},
-    {id:'M88',a:{type:'2',g:'D'},          b:{type:'2',g:'G'},          date:'03/07',time:'15h'},
     {id:'M86',a:{type:'1',g:'J'},          b:{type:'2',g:'H'},          date:'03/07',time:'19h'},
-    {id:'M87',a:{type:'1',g:'K'},          b:{type:'3',cands:['D','E','I','J','L']}, date:'03/07',time:'22h30'}
+    {id:'M87',a:{type:'1',g:'K'},          b:{type:'3',cands:['D','E','I','J','L']}, date:'03/07',time:'22h30'},
+    {id:'M88',a:{type:'2',g:'D'},          b:{type:'2',g:'G'},          date:'03/07',time:'15h'}
   ];
-  // Oitavas: pares de vencedores da Rodada de 32 (ordem oficial FIFA)
   var R16_PAIRS=[
     {id:'M90',a:'M73',b:'M75',date:'04/07',time:'14h'},
     {id:'M89',a:'M74',b:'M77',date:'04/07',time:'18h'},
@@ -1192,35 +1189,40 @@ function BolaoApp(){
     {id:'M95',a:'M86',b:'M88',date:'07/07',time:'13h'},
     {id:'M96',a:'M85',b:'M87',date:'07/07',time:'17h'}
   ];
-  // Quartas
   var QF_PAIRS=[
     {id:'M97',a:'M89',b:'M90',date:'09/07',time:'17h'},
     {id:'M98',a:'M93',b:'M94',date:'10/07',time:'16h'},
     {id:'M99',a:'M91',b:'M92',date:'11/07',time:'18h'},
     {id:'M100',a:'M95',b:'M96',date:'11/07',time:'22h'}
   ];
-  // Semis
   var SF_PAIRS=[
     {id:'M101',a:'M97',b:'M98',date:'14/07',time:'16h'},
     {id:'M102',a:'M99',b:'M100',date:'15/07',time:'16h'}
   ];
 
-  // Um grupo só está "fechado" quando todos os 6 jogos dele já têm resultado real.
-  // Enquanto isso não ocorre, a posição de 1º/2º ainda pode mudar — então não exibimos o time.
+  // Divisão oficial em duas metades simétricas (lado esquerdo alimenta a Semi M101,
+  // lado direito alimenta a Semi M102) — espelha o layout do GE
+  var LEFT_R32  = ['M74','M77','M73','M75','M83','M84','M81','M82'];
+  var RIGHT_R32 = ['M76','M78','M79','M80','M86','M88','M85','M87'];
+  var LEFT_R16  = ['M89','M90','M93','M94'];
+  var RIGHT_R16 = ['M91','M92','M95','M96'];
+  var LEFT_QF   = ['M97','M98'];
+  var RIGHT_QF  = ['M99','M100'];
+
+  function groupSlotTeam(slot,realRows){
+    if(slot.type==='3')return null;
+    if(!isGroupClosed(slot.g))return null;
+    var rows=realRows[slot.g];
+    if(!rows||rows.length<2)return null;
+    return slot.type==='1'?rows[0]:rows[1];
+  }
+
   function isGroupClosed(g){
     var matches=MATCH_LIST.filter(function(m){return m.grupo===g;});
     return matches.length>0&&matches.every(function(m){
       var r=merged[fbkey(mkey(m))];
       return r&&r.sa!==null&&r.sa!==undefined&&r.sb!==null&&r.sb!==undefined;
     });
-  }
-
-  function groupSlotTeam(slot,realRows){
-    if(slot.type==='3')return null; // melhor 3º — aguardando tabela oficial
-    if(!isGroupClosed(slot.g))return null; // grupo ainda não fechado — posição não está cravada
-    var rows=realRows[slot.g];
-    if(!rows||rows.length<2)return null;
-    return slot.type==='1'?rows[0]:rows[1];
   }
 
   var bracketTab=h('div',null,
@@ -1242,7 +1244,6 @@ function BolaoApp(){
           : computeGroupRows(g,function(m){return merged[fbkey(mkey(m))];});
       });
 
-      // Resolve each R32 match to {ta,tb} team objects (or null if undetermined)
       var r32Resolved={};
       R32_MATCHES.forEach(function(m){
         r32Resolved[m.id]={
@@ -1267,7 +1268,7 @@ function BolaoApp(){
         var isConfirmed=!!(ta&&tb);
         var myGuesses=koGuesses[id]||{};
         var guessCount=Object.keys(myGuesses).length;
-        return h('div',{key:id,ref:function(el){if(el)bracketCardRefs.current[id]=el;},style:{background:'#1a2d52',borderRadius:8,border:'1px solid '+(isOpen?'#facc15':'#243356'),overflow:'hidden',minWidth:170,marginBottom:14}},
+        return h('div',{key:id,ref:function(el){if(el)bracketCardRefs.current[id]=el;},style:{background:'#1a2d52',borderRadius:8,border:'1px solid '+(isOpen?'#facc15':'#243356'),overflow:'hidden',width:170,flexShrink:0}},
           h('div',{style:{fontSize:8,color:'#64748b',padding:'3px 8px',background:'#16243e',display:'flex',justifyContent:'space-between',alignItems:'center'}},
             h('span',null,id),
             h('span',null,(date||'')+(time?' · '+time:''))
@@ -1275,7 +1276,6 @@ function BolaoApp(){
           MiniTeam(ta,labelA),
           h('div',{style:{height:1,background:'#243356'}}),
           MiniTeam(tb,labelB),
-          // Cadeado / status de palpites
           h('div',{
             onClick:function(){
               if(isOpen){ setKoPickMatch({id:id,ta:ta,tb:tb}); setKoSelectedName(''); setKoGuessA(''); setKoGuessB(''); setKoGuessWho(''); setKoConfirming(false); setKoAuthed(false); setKoPassInput(''); setKoPassErr(''); }
@@ -1293,7 +1293,6 @@ function BolaoApp(){
             isOpen?'🔓 Palpitar':isConfirmed?(guessCount>0?'🔒 Ver palpites':'🔒 Encerrado'):'🔒 Aguardando confronto',
             isConfirmed?h('span',{style:{marginLeft:4,color:'#4a6090',fontWeight:400}},'('+guessCount+'/'+RAW.length+')'):null
           ),
-          // Lista de palpites visível quando expandido (após prazo encerrado)
           (koViewMatch===id&&!isOpen&&guessCount>0)?h('div',{style:{background:'#0d1b34',padding:'6px 8px',borderTop:'1px solid #243356',maxHeight:160,overflowY:'auto'}},
             Object.keys(myGuesses).sort().map(function(nm){
               var g=myGuesses[nm];
@@ -1306,41 +1305,12 @@ function BolaoApp(){
         );
       }
 
-      // Column 1: Round of 32 (16 matches)
-      var col1=R32_MATCHES.map(function(m){
-        var r=r32Resolved[m.id];
-        return MatchCard(m.id,r.ta,r.tb,r.labelA,r.labelB,r.date,r.time);
-      });
+      function r32Card(id){var r=r32Resolved[id];return MatchCard(id,r.ta,r.tb,r.labelA,r.labelB,r.date,r.time);}
+      function r16Card(id){var m=R16_PAIRS.find(function(x){return x.id===id;});return MatchCard(id,null,null,'Venc. '+m.a,'Venc. '+m.b,m.date,m.time);}
+      function qfCard(id){var m=QF_PAIRS.find(function(x){return x.id===id;});return MatchCard(id,null,null,'Venc. '+m.a,'Venc. '+m.b,m.date,m.time);}
+      function sfCard(id){var m=SF_PAIRS.find(function(x){return x.id===id;});return MatchCard(id,null,null,'Venc. '+m.a,'Venc. '+m.b,m.date,m.time);}
 
-      // Column 2: Round of 16 (8 matches) — winners unknown until R32 is played
-      var col2=R16_PAIRS.map(function(m){
-        return MatchCard(m.id,null,null,'Venc. '+m.a,'Venc. '+m.b,m.date,m.time);
-      });
-
-      // Column 3: Quarterfinals (4)
-      var col3=QF_PAIRS.map(function(m){
-        return MatchCard(m.id,null,null,'Venc. '+m.a,'Venc. '+m.b,m.date,m.time);
-      });
-
-      // Column 4: Semifinals (2)
-      var col4=SF_PAIRS.map(function(m){
-        return MatchCard(m.id,null,null,'Venc. '+m.a,'Venc. '+m.b,m.date,m.time);
-      });
-
-      // Column 5: 3rd place + Final
-      var col5=[
-        MatchCard('3º Lugar',null,null,'Perdedor M101','Perdedor M102','18/07','18h'),
-        MatchCard('Final',null,null,'Venc. M101','Venc. M102','19/07','16h')
-      ];
-
-      function Column(title,cards,justify){
-        return h('div',{style:{display:'flex',flexDirection:'column',justifyContent:justify||'flex-start',minWidth:180,flex:'0 0 auto'}},
-          h('div',{style:{fontSize:11,fontWeight:700,color:'#facc15',textAlign:'center',marginBottom:10,textTransform:'uppercase',letterSpacing:1,position:'sticky',top:0}},title),
-          h('div',{style:{display:'flex',flexDirection:'column',gap:0,flex:1,justifyContent:'space-around'}},cards)
-        );
-      }
-
-      // Mapa de quem alimenta quem (filho → [ids dos jogos pais])
+      // Mapa pai→filho para desenhar as linhas de conexão
       var parentMap={};
       R16_PAIRS.forEach(function(m){parentMap[m.id]=[m.a,m.b];});
       QF_PAIRS.forEach(function(m){parentMap[m.id]=[m.a,m.b];});
@@ -1348,7 +1318,6 @@ function BolaoApp(){
       parentMap['Final']=['M101','M102'];
       parentMap["3º Lugar"]=['M101','M102'];
 
-      // Recalcula as linhas de conexão sempre que o conteúdo do chaveamento mudar
       React.useEffect(function(){
         var raf=requestAnimationFrame(function(){
           var cont=bracketContainerRef.current;
@@ -1360,13 +1329,16 @@ function BolaoApp(){
             if(!childEl)return;
             var cr=childEl.getBoundingClientRect();
             var childY=cr.top+cr.height/2-contRect.top+cont.scrollTop;
-            var childX=cr.left-contRect.left+cont.scrollLeft;
             parentMap[childId].forEach(function(parentId){
               var parentEl=bracketCardRefs.current[parentId];
               if(!parentEl)return;
               var pr=parentEl.getBoundingClientRect();
               var parentY=pr.top+pr.height/2-contRect.top+cont.scrollTop;
-              var parentX=pr.right-contRect.left+cont.scrollLeft;
+              // Lado esquerdo: linha sai da direita do pai, entra na esquerda do filho
+              // Lado direito: linha sai da esquerda do pai, entra na direita do filho
+              var parentIsRight=pr.left-contRect.left>cr.left-contRect.left;
+              var parentX=(parentIsRight?pr.left:pr.right)-contRect.left+cont.scrollLeft;
+              var childX=(parentIsRight?cr.right:cr.left)-contRect.left+cont.scrollLeft;
               lines.push({x1:parentX,y1:parentY,x2:childX,y2:childY});
             });
           });
@@ -1374,6 +1346,31 @@ function BolaoApp(){
         });
         return function(){cancelAnimationFrame(raf);};
       },[merged,espnStandings,koGuesses]);
+
+      // ── Coluna genérica para uma metade do chaveamento ──
+      function HalfColumn(title,cards){
+        return h('div',{style:{display:'flex',flexDirection:'column',gap:14,justifyContent:'space-around',flex:1}},
+          h('div',{style:{fontSize:10,fontWeight:700,color:'#facc15',textAlign:'center',marginBottom:4,textTransform:'uppercase',letterSpacing:1}},title),
+          h('div',{style:{display:'flex',flexDirection:'column',gap:18,flex:1,justifyContent:'space-around'}},cards)
+        );
+      }
+
+      var leftR32Cards=LEFT_R32.map(r32Card);
+      var leftR16Cards=LEFT_R16.map(r16Card);
+      var leftQfCards=LEFT_QF.map(qfCard);
+      var leftSfCard=sfCard('M101');
+
+      var rightR32Cards=RIGHT_R32.map(r32Card);
+      var rightR16Cards=RIGHT_R16.map(r16Card);
+      var rightQfCards=RIGHT_QF.map(qfCard);
+      var rightSfCard=sfCard('M102');
+
+      var centerCards=h('div',{style:{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:24,minWidth:190,padding:'0 8px'}},
+        h('div',{style:{fontSize:13,fontWeight:800,color:'#facc15',textAlign:'center',letterSpacing:2,textTransform:'uppercase'}},'🏆 Final'),
+        MatchCard('Final',null,null,'Venc. M101','Venc. M102','19/07','16h'),
+        h('div',{style:{fontSize:10,fontWeight:700,color:'#94a3b8',textAlign:'center',letterSpacing:1,marginTop:8}},'3º Lugar'),
+        MatchCard('3º Lugar',null,null,'Perdedor M101','Perdedor M102','18/07','18h')
+      );
 
       return h('div',{
           ref:function(el){bracketContainerRef.current=el;},
@@ -1388,16 +1385,25 @@ function BolaoApp(){
             return h('path',{key:i,d:d,stroke:'#ffffff',strokeWidth:1.5,fill:'none',opacity:.4});
           })
         ),
-        h('div',{style:{display:'flex',gap:16,minWidth:1000,position:'relative',zIndex:2}},
-          Column('Rodada de 32',col1),
-          Column('Oitavas de Final',col2,'space-around'),
-          Column('Quartas de Final',col3,'space-around'),
-          Column('Semifinais',col4,'space-around'),
-          Column('3º Lugar / Final',col5,'space-around')
+        h('div',{style:{display:'flex',gap:12,minWidth:1500,position:'relative',zIndex:2,alignItems:'stretch'}},
+          // ── Metade esquerda: Rodada32 → Oitavas → Quartas → Semi ──
+          HalfColumn('Rodada de 32',leftR32Cards),
+          HalfColumn('Oitavas',leftR16Cards),
+          HalfColumn('Quartas',leftQfCards),
+          HalfColumn('Semi',[leftSfCard]),
+          // ── Centro: Final + 3º lugar ──
+          centerCards,
+          // ── Metade direita: Semi ← Quartas ← Oitavas ← Rodada32 ──
+          HalfColumn('Semi',[rightSfCard]),
+          HalfColumn('Quartas',rightQfCards),
+          HalfColumn('Oitavas',rightR16Cards),
+          HalfColumn('Rodada de 32',rightR32Cards)
         )
       );
     })()
   );
+
+
 
   // ── Modal de palpite do mata-mata ───────────────────────────────────────
   var koModal=koPickMatch?h('div',{
