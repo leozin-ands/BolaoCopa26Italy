@@ -1165,7 +1165,6 @@ function BolaoApp(){
   var s_kopw=useState(''); var koPassInput=s_kopw[0],setKoPassInput=s_kopw[1]; // senha digitada
   var s_koae=useState(false); var koAuthed=s_koae[0],setKoAuthed=s_koae[1]; // senha validada com sucesso
   var s_koer=useState(''); var koPassErr=s_koer[0],setKoPassErr=s_koer[1]; // mensagem de erro da senha
-  var s_kov=useState(null); var koViewMatch=s_kov[0],setKoViewMatch=s_kov[1]; // qual jogo está com a lista de palpites expandida
   var bracketContainerRef=React.useRef(null);
   var bracketCardRefs=React.useRef({});
   var s_bl=useState([]); var bracketLines=s_bl[0],setBracketLines=s_bl[1];
@@ -1360,26 +1359,36 @@ function BolaoApp(){
           h('div',{
             onClick:function(){
               if(isOpen){ setKoPickMatch({id:id,ta:ta,tb:tb}); setKoSelectedName(''); setKoGuessA(''); setKoGuessB(''); setKoGuessWho(''); setKoConfirming(false); setKoAuthed(false); setKoPassInput(''); setKoPassErr(''); }
-              else if(isConfirmed&&guessCount>0){ setKoViewMatch(koViewMatch===id?null:id); }
             },
             style:{
               display:'flex',alignItems:'center',justifyContent:'center',gap:5,
               padding:'5px 8px',fontSize:10,fontWeight:700,
-              cursor:(isOpen||(isConfirmed&&guessCount>0))?'pointer':'default',
+              cursor:isOpen?'pointer':'default',
               background:isOpen?'#3d2f00':'#0d1b34',
               color:isOpen?'#facc15':isConfirmed?'#64748b':'#3a4760',
               borderTop:'1px solid #243356'
             }
           },
-            isOpen?'🔓 Palpitar':isConfirmed?(guessCount>0?'🔒 Ver palpites':'🔒 Encerrado'):'🔒 Aguardando confronto',
+            isOpen?'🔓 Palpitar':isConfirmed?'🔒 Palpites encerrados':'🔒 Aguardando confronto',
             isConfirmed?h('span',{style:{marginLeft:4,color:'#4a6090',fontWeight:400}},'('+guessCount+'/'+RAW.length+')'):null
           ),
-          (koViewMatch===id&&!isOpen&&guessCount>0)?h('div',{style:{background:'#0d1b34',padding:'6px 8px',borderTop:'1px solid #243356',maxHeight:160,overflowY:'auto'}},
-            Object.keys(myGuesses).sort().map(function(nm){
-              var g=myGuesses[nm];
-              return h('div',{key:nm,style:{fontSize:10,color:'#94a3b8',display:'flex',justifyContent:'space-between',padding:'2px 0'}},
-                h('span',null,nm),
-                h('span',{style:{color:'#facc15',fontWeight:700}},g.sa+'×'+g.sb+(g.who?' ('+(g.who==='A'?labelA:labelB)+')':''))
+          // Assim que o prazo se esgota, os palpites de TODOS aparecem automaticamente —
+          // mesmo estilo de grade colorida usado na fase de grupos
+          (!isOpen&&isConfirmed&&guessCount>0)?h('div',{style:{display:'grid',gridTemplateColumns:'1fr',gap:1,background:'#243356',borderTop:'1px solid #243356'}},
+            RAW.filter(function(p){return myGuesses[p.name];}).map(function(p){
+              var g=myGuesses[p.name];
+              // resultKO (real do jogo do mata-mata) ainda não é alimentado automaticamente
+              // pela ESPN nesta versão — quando houver, basta popular resultKO[id]={sa,sb,who,decidedBy}
+              var realKO=(window.KO_RESULTS&&window.KO_RESULTS[id])||null;
+              var pts=realKO?calcPtsKnockout(realKO,g):null;
+              var bg=pts!==null?PTS_BG[pts]:'#1a2d52';
+              var bc=pts!==null?PTS_COL[pts]:'#1a2d52';
+              var tc=pts!==null?PTS_COL[pts]:'#94a3b8';
+              return h('div',{key:p.name,style:{background:bg,padding:'6px 8px',borderLeft:'3px solid '+bc,display:'flex',alignItems:'center',gap:6}},
+                h('span',{style:{fontSize:10,color:'#94a3b8',fontWeight:600,flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},p.name),
+                h('span',{style:{fontSize:13,fontWeight:800,color:'#facc15'}},g.sa+'×'+g.sb),
+                g.sa===g.sb&&g.who?h('span',{style:{fontSize:9,color:'#94a3b8'}},'('+(g.who==='A'?labelA:labelB).slice(0,3)+')'):null,
+                pts!==null?h('span',{style:{fontSize:9,fontWeight:800,color:tc,border:'1px solid '+bc,borderRadius:5,padding:'1px 4px'}},pts+'pts'):null
               );
             })
           ):null
