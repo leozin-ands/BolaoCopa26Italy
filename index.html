@@ -1050,14 +1050,17 @@ function BolaoApp(){
             var sDay=parseInt(sd),sMon=parseInt(sd.slice(3));
             isSkipped=(mMon<sMon||(mMon===sMon&&mDay<sDay));
           }
-          var pts=(!isSkipped&&(hasReal||isLv))?calcPts(real||{sa:ev&&ev.homeScore,sb:ev&&ev.awayScore},g):null;
-          var bg=isSkipped?'#1a2d52':pts!==null?PTS_BG[pts]:'#1a2d52';
-          var bc=isSkipped?'#374151':pts!==null?PTS_COL[pts]:'#1a2d52';
-          var tc=isSkipped?'#4b5563':pts!==null?PTS_COL[pts]:'#94a3b8';
+          var noGuess=!g||g.sa===null||g.sa===undefined||g.sb===null||g.sb===undefined;
+          var pts=(!isSkipped&&!noGuess&&(hasReal||isLv))?calcPts(real||{sa:ev&&ev.homeScore,sb:ev&&ev.awayScore},g):null;
+          // Sem palpite + já há resultado real = equivalente a 0 pontos → destaca em vermelho
+          var forceZero=!isSkipped&&noGuess&&(hasReal||isLv);
+          var bg=isSkipped?'#1a2d52':forceZero?PTS_BG[0]:pts!==null?PTS_BG[pts]:'#1a2d52';
+          var bc=isSkipped?'#374151':forceZero?PTS_COL[0]:pts!==null?PTS_COL[pts]:'#1a2d52';
+          var tc=isSkipped?'#4b5563':forceZero?PTS_COL[0]:pts!==null?PTS_COL[pts]:'#94a3b8';
           return h('div',{key:p.name,style:{background:bg,padding:'8px 11px',borderLeft:'3px solid '+bc}},
             h('div',{style:{fontSize:10,color:'#94a3b8',marginBottom:2,fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},p.name),
             h('div',{style:{display:'flex',alignItems:'center',gap:4}},
-              h('span',{style:{fontSize:16,fontWeight:800,color:'#facc15'}},(g&&g.sa!==null?g.sa:'?'),' ',h('span',{style:{color:'#64748b',fontSize:12}},'×'),' ',(g&&g.sb!==null?g.sb:'?')),
+              h('span',{style:{fontSize:16,fontWeight:800,color:noGuess?'#4b5563':'#facc15'}},(g&&g.sa!==null?g.sa:'?'),' ',h('span',{style:{color:'#64748b',fontSize:12}},'×'),' ',(g&&g.sb!==null?g.sb:'?')),
               isSkipped?h('span',{style:{marginLeft:'auto',fontSize:9,color:'#4b5563',border:'1px solid #374151',borderRadius:5,padding:'1px 4px'}},'N/C'):
               pts!==null?h('span',{style:{marginLeft:'auto',fontSize:10,fontWeight:800,color:tc,border:'1px solid '+bc,borderRadius:5,padding:'1px 4px'}},pts+'pts'):null
             )
@@ -1376,10 +1379,18 @@ function BolaoApp(){
           var bg=pts!==null?PTS_BG[pts]:'#1a2d52';
           var bc=pts!==null?PTS_COL[pts]:'#1a2d52';
           var tc=pts!==null?PTS_COL[pts]:'#94a3b8';
-          if(!g)return h('div',{key:p.name,style:{background:'#1a2d52',padding:'8px 11px',borderLeft:'3px solid #1a2d52'}},
-            h('div',{style:{fontSize:10,color:'#94a3b8',marginBottom:2,fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},p.name),
-            h('div',{style:{fontSize:13,color:'#4b5563'}},'— não palpitou —')
-          );
+          // Não palpitou: se já há resultado real, isso é equivalente a 0 pontos — destaca em vermelho
+          if(!g){
+            var noBg=hasReal?PTS_BG[0]:'#1a2d52';
+            var noBc=hasReal?PTS_COL[0]:'#1a2d52';
+            return h('div',{key:p.name,style:{background:noBg,padding:'8px 11px',borderLeft:'3px solid '+noBc}},
+              h('div',{style:{fontSize:10,color:'#94a3b8',marginBottom:2,fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},p.name),
+              h('div',{style:{display:'flex',alignItems:'center',gap:4}},
+                h('span',{style:{fontSize:13,color:hasReal?PTS_COL[0]:'#4b5563',fontWeight:hasReal?700:400}},'— não palpitou —'),
+                hasReal?h('span',{style:{marginLeft:'auto',fontSize:10,fontWeight:800,color:PTS_COL[0],border:'1px solid '+PTS_COL[0],borderRadius:5,padding:'1px 4px'}},'0pts'):null
+              )
+            );
+          }
           return h('div',{key:p.name,style:{background:bg,padding:'8px 11px',borderLeft:'3px solid '+bc}},
             h('div',{style:{fontSize:10,color:'#94a3b8',marginBottom:2,fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},p.name),
             h('div',{style:{display:'flex',alignItems:'center',gap:4}},
