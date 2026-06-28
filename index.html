@@ -301,7 +301,7 @@ function useESPN(){
     var toStr=function(d){return d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate());};
     // Fetch full World Cup group stage range to catch any missed finished games
     // ESPN may drop old completed games from day-specific results, so always use full range
-    fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?limit=100&dates=20260611-20260628')
+    fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?limit=100&dates=20260611-20260719')
     .then(function(r){return r.json();})
     .then(function(d){
       // Build fresh goal map from all events
@@ -334,6 +334,12 @@ function useESPN(){
           if(!gmap[nm])gmap[nm]={name:nm,team:team,goals:0};
           gmap[nm].goals++;
         });
+        // Detecta se o jogo foi decidido nos pênaltis (mata-mata) — ESPN
+        // expõe isso via competitor.shootoutScore (presente só quando há pênaltis)
+        var homeSO=home.shootoutScore!==undefined?parseInt(home.shootoutScore):null;
+        var awaySO=away.shootoutScore!==undefined?parseInt(away.shootoutScore):null;
+        var hadPenalties=homeSO!==null&&awaySO!==null;
+        var decidedBy=hadPenalties?'penalties':(isFin?'regulation':null);
         return{
           id:e.id,
           homeTeam:norm(home.team&&home.team.displayName||''),
@@ -343,6 +349,7 @@ function useESPN(){
           homeScore:parseInt(home.score||'0'),
           awayScore:parseInt(away.score||'0'),
           homeWin:!!home.winner,awayWin:!!away.winner,
+          homeSO:homeSO,awaySO:awaySO,decidedBy:decidedBy,
           clock:(comp.status&&comp.status.displayClock)||'',
           isLive:isLv,isHalf:isHalf,isFinal:isFin,
           isPre:sn==='STATUS_SCHEDULED'||sn==='STATUS_TIMED',
@@ -514,9 +521,7 @@ function BolaoApp(){
     return t;
   },[merged,espnStandings]);
 
-  var ranked=useMemo(function(){
-    return Object.entries(scores).sort(function(a,b){return b[1].total-a[1].total;}).map(function(x,i){return{rank:i+1,name:x[0],total:x[1].total,match:x[1].match,group:x[1].group,c5:x[1].c5,c4:x[1].c4,c2:x[1].c2,c0:x[1].c0};});
-  },[scores]);
+  
 
   var completedCount=useMemo(function(){
     return MATCH_LIST.filter(function(m){var r=merged[fbkey(mkey(m))];return r&&r.sa!==null&&r.sb!==null;}).length;
@@ -809,56 +814,7 @@ function BolaoApp(){
   );
 
   // ── RANKING TAB ──────────────────────────────────────────────────────────
-  var rankingTab=h('div',null,
-    h('div',{style:{marginBottom:12,color:'#94a3b8',fontSize:13}},'Ranking atualizado em tempo real'),
-    h('div',{style:{background:'#1a2d52',borderRadius:10,overflow:'hidden',border:'1px solid #243356',overflowX:'auto'}},
-      h('table',{style:{width:'100%',borderCollapse:'collapse',fontSize:13,minWidth:620}},
-        h('thead',null,
-          h('tr',{style:{background:'#16243e'}},
-            h('th',{style:{padding:'9px 6px',textAlign:'center',color:'#64748b',fontWeight:700,fontSize:11,width:34}},'#'),
-            h('th',{style:{padding:'9px 10px',textAlign:'left',color:'#64748b',fontWeight:700,fontSize:11}},'Participante'),
-            h('th',{style:{padding:'9px 6px',textAlign:'center',color:'#facc15',fontWeight:700,fontSize:11,width:54}},'Pts'),
-            h('th',{style:{padding:'9px 6px',textAlign:'center',color:'#22c55e',fontWeight:700,fontSize:11,width:46}},'5pts'),
-            h('th',{style:{padding:'9px 6px',textAlign:'center',color:'#3b82f6',fontWeight:700,fontSize:11,width:46}},'4pts'),
-            h('th',{style:{padding:'9px 6px',textAlign:'center',color:'#f59e0b',fontWeight:700,fontSize:11,width:46}},'2pts'),
-            h('th',{style:{padding:'9px 6px',textAlign:'center',color:'#ef4444',fontWeight:700,fontSize:11,width:46}},'0pts'),
-            h('th',{style:{padding:'9px 6px',textAlign:'center',color:'#a78bfa',fontWeight:700,fontSize:11,width:54}},'Grupo')
-          )
-        ),
-        h('tbody',null,
-          ranked.map(function(r,i){
-            var medals=['🥇','🥈','🥉'],isTop=i<3;
-            // Ouro / Prata / Bronze
-            var rowBg = i===0?'linear-gradient(90deg,#3d3209,#2a2407)':
-                        i===1?'linear-gradient(90deg,#2a2d33,#23262b)':
-                        i===2?'linear-gradient(90deg,#3a2615,#2d1d10)':
-                        (i%2===0?'#1a2d52':'#192a4d');
-            var rowBorder = i===0?'#facc15':i===1?'#cbd5e1':i===2?'#cd7f32':'#243356';
-            return h('tr',{key:r.name,style:{
-              background:rowBg,
-              borderTop:'1px solid '+rowBorder,
-              borderLeft:isTop?'3px solid '+rowBorder:'none'
-            }},
-              h('td',{style:{padding:'8px 6px',textAlign:'center',fontWeight:800,fontSize:isTop?15:12,color:isTop?rowBorder:'#64748b'}},medals[i]||r.rank),
-              h('td',{style:{padding:'8px 10px'}},
-                h('div',{style:{fontWeight:700,fontSize:13,color:'#fff'}},r.name),
-                i===0?h('div',{style:{fontSize:10,color:'#facc15',fontWeight:600,marginTop:1}},'🏆 R$700,00'):
-                i===1?h('div',{style:{fontSize:10,color:'#cbd5e1',fontWeight:600,marginTop:1}},'🥈 R$300,00'):
-                i===2?h('div',{style:{fontSize:10,color:'#cd7f32',fontWeight:600,marginTop:1}},'🥉 R$150,00'):null,
-                (i===0&&r.name==='Luiz Balestero')?h('div',{style:{fontSize:10,color:'#facc15',fontWeight:700,marginTop:1}},'Luiz líder? É máfia!'):null
-              ),
-              h('td',{style:{padding:'8px 6px',textAlign:'center',fontWeight:800,fontSize:15,color:'#facc15'}},r.total),
-              h('td',{style:{padding:'8px 6px',textAlign:'center',fontWeight:600,fontSize:12,color:'#22c55e'}},r.c5),
-              h('td',{style:{padding:'8px 6px',textAlign:'center',fontWeight:600,fontSize:12,color:'#3b82f6'}},r.c4),
-              h('td',{style:{padding:'8px 6px',textAlign:'center',fontWeight:600,fontSize:12,color:'#f59e0b'}},r.c2),
-              h('td',{style:{padding:'8px 6px',textAlign:'center',fontWeight:600,fontSize:12,color:'#ef4444'}},r.c0),
-              h('td',{style:{padding:'8px 6px',textAlign:'center',fontWeight:700,fontSize:12,color:'#a78bfa'}},r.group)
-            );
-          })
-        )
-      )
-    )
-  );
+  
 
   // ── CLASSIFICATION TAB ───────────────────────────────────────────────────
   function StandingsTable(g,rows,realRows){
@@ -1174,6 +1130,133 @@ function BolaoApp(){
     {id:'M102',a:'M99',b:'M100',date:'15/07',time:'16h'}
   ];
 
+  // ── Resultados reais do mata-mata, vindos da ESPN (ao vivo + encerrados) ────
+  // koResults: mapa "M73"→{sa,sb,who,decidedBy,isLive,isFinal} usado para:
+  //  1) calcular pontuação de cada participante (calcPtsKnockout)
+  //  2) avançar automaticamente o vencedor para a fase seguinte
+  var koResults=useMemo(function(){
+    var map={};
+    R32_MATCHES.forEach(function(m){
+      var ev=espnEvents.find(function(e){
+        return (e.homeTeam===m.taName&&e.awayTeam===m.tbName)||
+               (e.homeTeam===m.tbName&&e.awayTeam===m.taName);
+      });
+      if(!ev)return;
+      var swapped=ev.homeTeam===m.tbName;
+      var sa=swapped?ev.awayScore:ev.homeScore;
+      var sb=swapped?ev.homeScore:ev.awayScore;
+      var aWon=swapped?ev.awayWin:ev.homeWin;
+      var bWon=swapped?ev.homeWin:ev.awayWin;
+      map[m.id]={
+        sa:sa,sb:sb,
+        who:(ev.isFinal&&sa===sb)?(aWon?'A':bWon?'B':null):null,
+        winnerName:ev.isFinal?(aWon?m.taName:bWon?m.tbName:null):null,
+        decidedBy:ev.decidedBy,
+        isLive:ev.isLive||ev.isHalf,
+        isFinal:ev.isFinal
+      };
+    });
+    return map;
+  },[espnEvents]);
+
+  // Resolve o nome do vencedor de qualquer partida do bracket (R32, Oitavas, Quartas, Semis)
+  // usado para preencher automaticamente os times da fase seguinte
+  function koWinnerName(matchId){
+    var r=koResults[matchId];
+    return (r&&r.isFinal)?r.winnerName:null;
+  }
+
+  // ── Pontuação do mata-mata por participante (somada ao Ranking geral) ───────
+  var koPoints=useMemo(function(){
+    var t={};
+    RAW.forEach(function(p){t[p.name]=0;});
+    Object.keys(koResults).forEach(function(mid){
+      var real=koResults[mid];
+      if(!real||!real.isFinal)return;
+      RAW.forEach(function(p){
+        var g=(koGuesses[mid]||{})[p.name];
+        if(g)t[p.name]+=calcPtsKnockout(real,g);
+      });
+    });
+    return t;
+  },[koResults,koGuesses]);
+
+  var ranked=useMemo(function(){
+    return Object.entries(scores).sort(function(a,b){
+      var totalA=a[1].total+(koPoints[a[0]]||0);
+      var totalB=b[1].total+(koPoints[b[0]]||0);
+      return totalB-totalA;
+    }).map(function(x,i){
+      var koP=koPoints[x[0]]||0;
+      return{rank:i+1,name:x[0],total:x[1].total+koP,match:x[1].match,group:x[1].group,knockout:koP,c5:x[1].c5,c4:x[1].c4,c2:x[1].c2,c0:x[1].c0};
+    });
+  },[scores,koPoints]);
+
+  var rankingTab=h('div',null,
+    h('div',{style:{marginBottom:12,color:'#94a3b8',fontSize:13}},'Ranking atualizado em tempo real'),
+    h('div',{style:{background:'#1a2d52',borderRadius:10,overflow:'hidden',border:'1px solid #243356',overflowX:'auto'}},
+      h('table',{style:{width:'100%',borderCollapse:'collapse',fontSize:13,minWidth:620}},
+        h('thead',null,
+          h('tr',{style:{background:'#16243e'}},
+            h('th',{style:{padding:'9px 6px',textAlign:'center',color:'#64748b',fontWeight:700,fontSize:11,width:34}},'#'),
+            h('th',{style:{padding:'9px 10px',textAlign:'left',color:'#64748b',fontWeight:700,fontSize:11}},'Participante'),
+            h('th',{style:{padding:'9px 6px',textAlign:'center',color:'#facc15',fontWeight:700,fontSize:11,width:54}},'Pts'),
+            h('th',{style:{padding:'9px 6px',textAlign:'center',color:'#22c55e',fontWeight:700,fontSize:11,width:46}},'5pts'),
+            h('th',{style:{padding:'9px 6px',textAlign:'center',color:'#3b82f6',fontWeight:700,fontSize:11,width:46}},'4pts'),
+            h('th',{style:{padding:'9px 6px',textAlign:'center',color:'#f59e0b',fontWeight:700,fontSize:11,width:46}},'2pts'),
+            h('th',{style:{padding:'9px 6px',textAlign:'center',color:'#ef4444',fontWeight:700,fontSize:11,width:46}},'0pts'),
+            h('th',{style:{padding:'9px 6px',textAlign:'center',color:'#a78bfa',fontWeight:700,fontSize:11,width:54}},'Grupo'),
+            h('th',{style:{padding:'9px 6px',textAlign:'center',color:'#facc15',fontWeight:700,fontSize:11,width:60}},'Mata-Mata')
+          )
+        ),
+        h('tbody',null,
+          ranked.map(function(r,i){
+            var medals=['🥇','🥈','🥉'],isTop=i<3;
+            // Ouro / Prata / Bronze
+            var rowBg = i===0?'linear-gradient(90deg,#3d3209,#2a2407)':
+                        i===1?'linear-gradient(90deg,#2a2d33,#23262b)':
+                        i===2?'linear-gradient(90deg,#3a2615,#2d1d10)':
+                        (i%2===0?'#1a2d52':'#192a4d');
+            var rowBorder = i===0?'#facc15':i===1?'#cbd5e1':i===2?'#cd7f32':'#243356';
+            return h('tr',{key:r.name,style:{
+              background:rowBg,
+              borderTop:'1px solid '+rowBorder,
+              borderLeft:isTop?'3px solid '+rowBorder:'none'
+            }},
+              h('td',{style:{padding:'8px 6px',textAlign:'center',fontWeight:800,fontSize:isTop?15:12,color:isTop?rowBorder:'#64748b'}},medals[i]||r.rank),
+              h('td',{style:{padding:'8px 10px'}},
+                h('div',{style:{fontWeight:700,fontSize:13,color:'#fff'}},r.name),
+                i===0?h('div',{style:{fontSize:10,color:'#facc15',fontWeight:600,marginTop:1}},'🏆 R$700,00'):
+                i===1?h('div',{style:{fontSize:10,color:'#cbd5e1',fontWeight:600,marginTop:1}},'🥈 R$300,00'):
+                i===2?h('div',{style:{fontSize:10,color:'#cd7f32',fontWeight:600,marginTop:1}},'🥉 R$150,00'):null,
+                (i===0&&r.name==='Luiz Balestero')?h('div',{style:{fontSize:10,color:'#facc15',fontWeight:700,marginTop:1}},'Luiz líder? É máfia!'):null
+              ),
+              h('td',{style:{padding:'8px 6px',textAlign:'center',fontWeight:800,fontSize:15,color:'#facc15'}},r.total),
+              h('td',{style:{padding:'8px 6px',textAlign:'center',fontWeight:600,fontSize:12,color:'#22c55e'}},r.c5),
+              h('td',{style:{padding:'8px 6px',textAlign:'center',fontWeight:600,fontSize:12,color:'#3b82f6'}},r.c4),
+              h('td',{style:{padding:'8px 6px',textAlign:'center',fontWeight:600,fontSize:12,color:'#f59e0b'}},r.c2),
+              h('td',{style:{padding:'8px 6px',textAlign:'center',fontWeight:600,fontSize:12,color:'#ef4444'}},r.c0),
+              h('td',{style:{padding:'8px 6px',textAlign:'center',fontWeight:700,fontSize:12,color:'#a78bfa'}},r.group),
+              h('td',{style:{padding:'8px 6px',textAlign:'center',fontWeight:700,fontSize:12,color:'#facc15'}},r.knockout)
+            );
+          })
+        )
+      )
+    )
+  );
+
+  // Auto-save dos resultados do mata-mata no Firebase (mesmo padrão da fase de grupos)
+  React.useEffect(function(){
+    if(!_db)return;
+    Object.keys(koResults).forEach(function(mid){
+      var r=koResults[mid];
+      if(r&&r.isFinal){
+        _db.ref('ko_results/'+mid).set({sa:r.sa,sb:r.sb,who:r.who,decidedBy:r.decidedBy,winnerName:r.winnerName});
+      }
+    });
+  },[koResults]);
+
+
   // Calcula o cutoff (data/hora) de um jogo, dado date+time no formato "dd/mm" e "HHhMM"
   function koCutoffDate(dateStr,timeStr){
     var parts=dateStr.split('/'); var dd=parseInt(parts[0]),mm=parseInt(parts[1]);
@@ -1219,7 +1302,7 @@ function BolaoApp(){
     // m: {id, taName, tbName, date, time} — um confronto da Rodada de 32/Oitavas/etc.
     var myGuesses=koGuesses[m.id]||{};
     var hasGuesses=Object.keys(myGuesses).length>0;
-    var realKO=(typeof window!=='undefined'&&window.KO_RESULTS&&window.KO_RESULTS[m.id])||null;
+    var realKO=koResults[m.id]||null;
     var hasReal=realKO&&realKO.sa!==null&&realKO.sa!==undefined;
     return h('div',{key:'ko_'+m.id,style:{background:'#1a2d52',borderRadius:12,overflow:'hidden',border:'1px solid #243356',marginBottom:14}},
       h('div',{style:{background:'#16243e',padding:'9px 14px',display:'flex',alignItems:'center',gap:8,borderBottom:'1px solid #243356',flexWrap:'wrap'}},
@@ -1449,9 +1532,26 @@ function BolaoApp(){
       }
 
       function r32Card(id){var r=r32Resolved[id];return MatchCard(id,r.ta,r.tb,r.labelA,r.labelB,r.date,r.time);}
-      function r16Card(id){var m=R16_PAIRS.find(function(x){return x.id===id;});return MatchCard(id,null,null,'Venc. '+m.a,'Venc. '+m.b,m.date,m.time);}
-      function qfCard(id){var m=QF_PAIRS.find(function(x){return x.id===id;});return MatchCard(id,null,null,'Venc. '+m.a,'Venc. '+m.b,m.date,m.time);}
-      function sfCard(id){var m=SF_PAIRS.find(function(x){return x.id===id;});return MatchCard(id,null,null,'Venc. '+m.a,'Venc. '+m.b,m.date,m.time);}
+      // Resolve o vencedor real (via koWinnerName) para preencher automaticamente a fase seguinte
+      function resolveWinnerTeam(parentId){
+        var wn=koWinnerName(parentId);
+        return wn?{team:wn}:null;
+      }
+      function r16Card(id){
+        var m=R16_PAIRS.find(function(x){return x.id===id;});
+        var ta=resolveWinnerTeam(m.a),tb=resolveWinnerTeam(m.b);
+        return MatchCard(id,ta,tb,'Venc. '+m.a,'Venc. '+m.b,m.date,m.time);
+      }
+      function qfCard(id){
+        var m=QF_PAIRS.find(function(x){return x.id===id;});
+        var ta=resolveWinnerTeam(m.a),tb=resolveWinnerTeam(m.b);
+        return MatchCard(id,ta,tb,'Venc. '+m.a,'Venc. '+m.b,m.date,m.time);
+      }
+      function sfCard(id){
+        var m=SF_PAIRS.find(function(x){return x.id===id;});
+        var ta=resolveWinnerTeam(m.a),tb=resolveWinnerTeam(m.b);
+        return MatchCard(id,ta,tb,'Venc. '+m.a,'Venc. '+m.b,m.date,m.time);
+      }
 
       // Mapa pai→filho para desenhar as linhas de conexão
       var parentMap={};
