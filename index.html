@@ -78,6 +78,14 @@ var KNOWN_RESULTS=[
   {key:'J_Áustria_Jordânia',                sa:3, sb:1},
   {key:'K_Portugal_Rep_ D_ Congo',          sa:1, sb:1},
 ];
+
+// Resultados CONFIRMADOS do mata-mata (fallback caso a ESPN não tenha sido
+// capturada a tempo no navegador de nenhum participante). Mesmo padrão do
+// KNOWN_RESULTS acima, mas gravados em ko_results/ em vez de results/.
+var KNOWN_KO_RESULTS=[
+  // África do Sul 0 x 1 Canadá (M75) — gol nos acréscimos do 2º tempo, sem prorrogação/pênaltis
+  {id:'M75', sa:0, sb:1, who:null, decidedBy:'regulation', winnerName:'Canadá'},
+];
 window.addEventListener('load',function(){
   if(!_db)return;
   KNOWN_RESULTS.forEach(function(r){
@@ -96,6 +104,16 @@ window.addEventListener('load',function(){
       _db.ref('ko_guesses').set(null);
       _db.ref('ko_guesses_wiped_v2').set(true);
     }
+  });
+  // Seed dos resultados confirmados do mata-mata (fallback se a ESPN não foi
+  // capturada a tempo por nenhum navegador aberto)
+  KNOWN_KO_RESULTS.forEach(function(r){
+    _db.ref('ko_results/'+r.id).once('value',function(snap){
+      var cur=snap.val();
+      if(!cur||cur.sa!==r.sa||cur.sb!==r.sb){
+        _db.ref('ko_results/'+r.id).set({sa:r.sa,sb:r.sb,who:r.who,decidedBy:r.decidedBy,winnerName:r.winnerName});
+      }
+    });
   });
 });
 
@@ -266,28 +284,25 @@ function calcPts(real,guess){
 function calcPtsKnockout(real,guess){
   if(!real||!guess)return 0;
 
-  // Jogo REAL terminou empatado no tempo normal (foi a pênaltis ou prorrogação)
-  var realWasDraw=real.sa===real.sb;
+  var basePts=calcPts(real,guess);
+  var guessIsDraw=guess.sa===guess.sb;
 
-  if(realWasDraw){
-    // Quando o jogo empata no tempo normal, a régua de pontos muda:
-    //  - Acertou o placar exato do tempo normal E quem avançou nos pênaltis → 5+3=8pts
-    //    (placar exato já é a coisa mais difícil de acertar; bônus de pênaltis some-se)
-    //  - Acertou só quem avançou (mesmo errando o placar do empate) → 2pts
-    //  - Não acertou quem avançou → 0pts
-    var exactDraw=(guess.sa===guess.sb)&&guess.sa===real.sa&&guess.sb===real.sb;
-    var guessedRightAdvancer=real.decidedBy==='penalties'&&guess.sa===guess.sb&&guess.who&&real.who&&guess.who===real.who;
+  if(guessIsDraw&&guess.who){
+    // O participante palpitou EMPATE e indicou quem avançaria nos pênaltis.
+    // Verificamos se o time que ele escolheu foi de fato quem avançou no jogo
+    // real — não importa se a classificação veio nos 90min, prorrogação ou pênaltis.
+    var guessedAdvancerName=guess.who==='A'?real.taName:real.tbName;
+    var guessedRightAdvancer=guessedAdvancerName&&real.winnerName&&guessedAdvancerName===real.winnerName;
 
-    if(exactDraw&&guessedRightAdvancer)return 8; // 5 (placar exato) + 3 (bônus pênaltis)
-    if(exactDraw)return 5;                       // acertou o placar do empate, mas não disse quem avança (ou avança na prorrogação)
-    if(guessedRightAdvancer)return 2;             // só acertou quem avançou nos pênaltis — NOVA REGRA
-    // Empate real mas o participante nem palpitou empate, ou empatou em outro placar
-    // sem dizer quem avança corretamente: usa a régua padrão (vencedor+saldo/só vencedor/zero)
-    return calcPts(real,guess);
+    var exactDraw=guess.sa===real.sa&&guess.sb===real.sb; // só é "exato" se o jogo real também empatou nesse placar
+
+    if(exactDraw&&guessedRightAdvancer&&real.decidedBy==='penalties')return 8; // placar exato do empate + acertou quem avançou nos pênaltis
+    if(exactDraw)return 5; // acertou o placar exato do empate (mesmo sem indicar quem avança, ou foi decidido na prorrogação)
+    if(guessedRightAdvancer)return 2; // empate ≠ resultado real, mas acertou quem avançou de qualquer forma — NOVA REGRA
   }
 
-  // Jogo decidido dentro dos 90 minutos (sem empate) — régua padrão de sempre
-  return calcPts(real,guess);
+  // Demais casos: régua padrão (vencedor+saldo / só vencedor / zero)
+  return basePts;
 }
 var PTS_COL={5:'#22c55e',4:'#3b82f6',2:'#f59e0b',0:'#ef4444'};
 var PTS_BG={5:'#052e16',4:'#1e3a5f',2:'#3d2600',0:'#3b0f0f'};
@@ -438,6 +453,13 @@ function BolaoApp(){
   useEffect(function(){
     if(!_db){setDbSt('error');return;}
     _db.ref('results').on('value',function(s){setResults(s.val()||{});setDbSt('ok');},function(){setDbSt('error');});
+  },[]);
+
+  // Lê os resultados do mata-mata já confirmados/salvos no Firebase
+  var s_kores=useState({}); var koResultsFromDB=s_kores[0],setKoResultsFromDB=s_kores[1];
+  useEffect(function(){
+    if(!_db)return;
+    _db.ref('ko_results').on('value',function(s){setKoResultsFromDB(s.val()||{});});
   },[]);
 
   // ── Persistent score cache: accumulates ALL ESPN scores across every poll ──
@@ -1152,27 +1174,41 @@ function BolaoApp(){
   var koResults=useMemo(function(){
     var map={};
     R32_MATCHES.forEach(function(m){
+      // 1) Base: resultado já confirmado/salvo no Firebase (ex: KNOWN_KO_RESULTS)
+      var fromDB=koResultsFromDB[m.id];
+      if(fromDB){
+        map[m.id]={
+          sa:fromDB.sa,sb:fromDB.sb,who:fromDB.who||null,
+          winnerName:fromDB.winnerName||null,
+          taName:m.taName,tbName:m.tbName,
+          decidedBy:fromDB.decidedBy||'regulation',
+          isLive:false,isFinal:true
+        };
+      }
+      // 2) ESPN sobrepõe quando tiver o jogo (cobre ao vivo + finais mais recentes)
       var ev=espnEvents.find(function(e){
         return (e.homeTeam===m.taName&&e.awayTeam===m.tbName)||
                (e.homeTeam===m.tbName&&e.awayTeam===m.taName);
       });
-      if(!ev)return;
-      var swapped=ev.homeTeam===m.tbName;
-      var sa=swapped?ev.awayScore:ev.homeScore;
-      var sb=swapped?ev.homeScore:ev.awayScore;
-      var aWon=swapped?ev.awayWin:ev.homeWin;
-      var bWon=swapped?ev.homeWin:ev.awayWin;
-      map[m.id]={
-        sa:sa,sb:sb,
-        who:(ev.isFinal&&sa===sb)?(aWon?'A':bWon?'B':null):null,
-        winnerName:ev.isFinal?(aWon?m.taName:bWon?m.tbName:null):null,
-        decidedBy:ev.decidedBy,
-        isLive:ev.isLive||ev.isHalf,
-        isFinal:ev.isFinal
-      };
+      if(ev){
+        var swapped=ev.homeTeam===m.tbName;
+        var sa=swapped?ev.awayScore:ev.homeScore;
+        var sb=swapped?ev.homeScore:ev.awayScore;
+        var aWon=swapped?ev.awayWin:ev.homeWin;
+        var bWon=swapped?ev.homeWin:ev.awayWin;
+        map[m.id]={
+          sa:sa,sb:sb,
+          who:(ev.isFinal&&sa===sb)?(aWon?'A':bWon?'B':null):null,
+          winnerName:ev.isFinal?(aWon?m.taName:bWon?m.tbName:null):null,
+          taName:m.taName,tbName:m.tbName,
+          decidedBy:ev.decidedBy,
+          isLive:ev.isLive||ev.isHalf,
+          isFinal:ev.isFinal
+        };
+      }
     });
     return map;
-  },[espnEvents]);
+  },[espnEvents,koResultsFromDB]);
 
   // Resolve o nome do vencedor de qualquer partida do bracket (R32, Oitavas, Quartas, Semis)
   // usado para preencher automaticamente os times da fase seguinte
