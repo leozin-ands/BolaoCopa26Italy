@@ -1170,6 +1170,7 @@ function BolaoApp(){
   var bracketCardRefs=React.useRef({});
   var s_bl=useState([]); var bracketLines=s_bl[0],setBracketLines=s_bl[1];
 
+
   // Sync mata-mata guesses from Firebase
   useEffect(function(){
     if(!_db)return;
@@ -1234,6 +1235,45 @@ function BolaoApp(){
     {id:'M101',a:'M97',b:'M98',date:'14/07',time:'16h'},
     {id:'M102',a:'M99',b:'M100',date:'15/07',time:'16h'}
   ];
+
+  // Calcula o cutoff (data/hora) de um jogo, dado date+time no formato "dd/mm" e "HHhMM"
+  function koCutoffDate(dateStr,timeStr){
+    var parts=dateStr.split('/'); var dd=parseInt(parts[0]),mm=parseInt(parts[1]);
+    var tparts=timeStr.replace('h',':').split(':'); var hh=parseInt(tparts[0]),min=tparts[1]?parseInt(tparts[1]):0;
+    var year=new Date().getFullYear();
+    var matchDate=new Date(year,mm-1,dd,hh,min);
+    return new Date(matchDate.getTime()-30*60000);
+  }
+
+  // Acha o próximo cutoff de palpite (entre todos os jogos do mata-mata ainda não vencidos)
+  function nextKoCutoff(){
+    var all=R32_MATCHES.map(function(m){return koCutoffDate(m.date,m.time);})
+      .concat(R16_PAIRS.map(function(m){return koCutoffDate(m.date,m.time);}))
+      .concat(QF_PAIRS.map(function(m){return koCutoffDate(m.date,m.time);}))
+      .concat(SF_PAIRS.map(function(m){return koCutoffDate(m.date,m.time);}));
+    var now=new Date();
+    var future=all.filter(function(d){return d>now;}).sort(function(a,b){return a-b;});
+    return future[0]||null;
+  }
+
+  // Contagem regressiva até o fechamento do próximo palpite do mata-mata
+  var s_now=useState(new Date()); var nowTick=s_now[0],setNowTick=s_now[1];
+  useEffect(function(){
+    var t=setInterval(function(){setNowTick(new Date());},1000);
+    return function(){clearInterval(t);};
+  },[]);
+  var nextCutoff=useMemo(function(){return nextKoCutoff();},[nowTick.getMinutes()]);
+  var countdownStr=useMemo(function(){
+    if(!nextCutoff)return null;
+    var diff=nextCutoff-nowTick;
+    if(diff<=0)return null;
+    var h=Math.floor(diff/3600000);
+    var d=Math.floor(h/24); h=h%24;
+    var m=Math.floor((diff%3600000)/60000);
+    var s=Math.floor((diff%60000)/1000);
+    if(d>0)return d+'d '+h+'h '+m+'m';
+    return String(h).padStart(2,'0')+'h '+String(m).padStart(2,'0')+'m '+String(s).padStart(2,'0')+'s';
+  },[nextCutoff,nowTick]);
 
   // Divisão oficial em duas metades simétricas (lado esquerdo alimenta a Semi M101,
   // lado direito alimenta a Semi M102) — espelha o layout do GE
@@ -1610,7 +1650,11 @@ function BolaoApp(){
           h('div',{style:{fontSize:9,color:'#facc15',letterSpacing:3,textTransform:'uppercase',marginBottom:2}},'Copa do Mundo 2026'),
           h('div',{style:{fontSize:20,fontWeight:800,marginBottom:2}},'🏆 Bolão — Italy'),
           h('div',{style:{fontSize:11,color:'#94a3b8'}},completedCount+'/'+MATCH_LIST.length+' jogos  •  '+RAW.length+' participantes'),
-          dbSt==='error'?h('div',{style:{fontSize:10,color:'#fca5a5',marginTop:4}},'⚠️ Sem conexão'):null
+          dbSt==='error'?h('div',{style:{fontSize:10,color:'#fca5a5',marginTop:4}},'⚠️ Sem conexão'):null,
+          countdownStr?h('div',{style:{marginTop:8,padding:'6px 10px',background:'#1a2d52',border:'1px solid #facc1560',borderRadius:8,display:'inline-block'}},
+            h('div',{style:{fontSize:8,color:'#94a3b8',letterSpacing:1,textTransform:'uppercase',marginBottom:2}},'⏳ Fecha o próximo palpite em'),
+            h('div',{style:{fontSize:14,fontWeight:800,color:'#facc15',fontFamily:'monospace'}},countdownStr)
+          ):null
         ),
 
         // Center: LIVE on top (mobile stacks vertically), NEXT below
