@@ -1162,22 +1162,22 @@ function BolaoApp(){
 
   // ── BRACKET (MATA-MATA) — formato simétrico estilo GE (duas metades + final no centro) ──
   var R32_MATCHES=[
-    {id:'M73',a:{type:'2',g:'A'},          b:{type:'2',g:'B'},          date:'28/06',time:'16h'},
-    {id:'M74',a:{type:'1',g:'E'},          b:{type:'3',cands:['A','B','C','D','F']}, date:'29/06',time:'17h30'},
-    {id:'M75',a:{type:'1',g:'F'},          b:{type:'2',g:'C'},          date:'29/06',time:'22h'},
-    {id:'M76',a:{type:'1',g:'C'},          b:{type:'2',g:'F'},          date:'29/06',time:'14h'},
-    {id:'M77',a:{type:'1',g:'I'},          b:{type:'3',cands:['C','D','F','G','H']}, date:'30/06',time:'18h'},
-    {id:'M78',a:{type:'2',g:'E'},          b:{type:'2',g:'I'},          date:'30/06',time:'14h'},
-    {id:'M79',a:{type:'1',g:'A'},          b:{type:'3',cands:['C','E','F','H','I']}, date:'30/06',time:'22h'},
-    {id:'M80',a:{type:'1',g:'L'},          b:{type:'3',cands:['E','H','I','J','K']}, date:'01/07',time:'13h'},
-    {id:'M81',a:{type:'1',g:'D'},          b:{type:'3',cands:['B','E','F','I','J']}, date:'01/07',time:'21h'},
-    {id:'M82',a:{type:'1',g:'G'},          b:{type:'3',cands:['A','E','H','I','J']}, date:'01/07',time:'17h'},
-    {id:'M83',a:{type:'2',g:'K'},          b:{type:'2',g:'L'},          date:'02/07',time:'20h'},
-    {id:'M84',a:{type:'1',g:'H'},          b:{type:'2',g:'J'},          date:'02/07',time:'16h'},
-    {id:'M85',a:{type:'1',g:'B'},          b:{type:'3',cands:['E','F','G','I','J']}, date:'03/07',time:'00h'},
-    {id:'M86',a:{type:'1',g:'J'},          b:{type:'2',g:'H'},          date:'03/07',time:'19h'},
-    {id:'M87',a:{type:'1',g:'K'},          b:{type:'3',cands:['D','E','I','J','L']}, date:'03/07',time:'22h30'},
-    {id:'M88',a:{type:'2',g:'D'},          b:{type:'2',g:'G'},          date:'03/07',time:'15h'}
+    {id:'M73',taName:'Alemanha',          tbName:'Paraguai',              date:'28/06',time:'16h'},
+    {id:'M74',taName:'França',            tbName:'Suécia',                date:'29/06',time:'17h30'},
+    {id:'M75',taName:'África do Sul',     tbName:'Canadá',                date:'29/06',time:'22h'},
+    {id:'M76',taName:'Holanda',           tbName:'Marrocos',              date:'29/06',time:'14h'},
+    {id:'M77',taName:'Portugal',          tbName:'Croácia',               date:'30/06',time:'18h'},
+    {id:'M78',taName:'Espanha',           tbName:'Áustria',               date:'30/06',time:'14h'},
+    {id:'M79',taName:'Estados Unidos',    tbName:'Bósnia e Herzegovina',  date:'30/06',time:'22h'},
+    {id:'M80',taName:'Bélgica',           tbName:'Senegal',               date:'01/07',time:'13h'},
+    {id:'M81',taName:'Brasil',            tbName:'Japão',                 date:'01/07',time:'21h'},
+    {id:'M82',taName:'Costa do Marfim',   tbName:'Noruega',               date:'01/07',time:'17h'},
+    {id:'M83',taName:'México',            tbName:'Equador',               date:'02/07',time:'20h'},
+    {id:'M84',taName:'Inglaterra',        tbName:'Rep. D. Congo',         date:'02/07',time:'16h'},
+    {id:'M85',taName:'Argentina',         tbName:'Cabo Verde',            date:'03/07',time:'00h'},
+    {id:'M86',taName:'Austrália',         tbName:'Egito',                 date:'03/07',time:'19h'},
+    {id:'M87',taName:'Suíça',             tbName:'Argélia',               date:'03/07',time:'22h30'},
+    {id:'M88',taName:'Colômbia',          tbName:'Gana',                  date:'03/07',time:'15h'}
   ];
   var R16_PAIRS=[
     {id:'M90',a:'M73',b:'M75',date:'04/07',time:'14h'},
@@ -1209,14 +1209,6 @@ function BolaoApp(){
   var LEFT_QF   = ['M97','M98'];
   var RIGHT_QF  = ['M99','M100'];
 
-  function groupSlotTeam(slot,realRows){
-    if(slot.type==='3')return null;
-    if(!isGroupClosed(slot.g))return null;
-    var rows=realRows[slot.g];
-    if(!rows||rows.length<2)return null;
-    return slot.type==='1'?rows[0]:rows[1];
-  }
-
   function isGroupClosed(g){
     var matches=MATCH_LIST.filter(function(m){return m.grupo===g;});
     return matches.length>0&&matches.every(function(m){
@@ -1244,13 +1236,27 @@ function BolaoApp(){
           : computeGroupRows(g,function(m){return merged[fbkey(mkey(m))];});
       });
 
+      // Acha o grupo de um time pelo nome, percorrendo TEAMS_BY_GROUP
+      function teamGroup(name){
+        for(var g in TEAMS_BY_GROUP){
+          if(TEAMS_BY_GROUP[g].indexOf(name)>=0)return g;
+        }
+        return null;
+      }
+      // Só mostra o nome do time quando o grupo dele já estiver matematicamente fechado
+      function resolvedTeam(name){
+        var g=teamGroup(name);
+        if(!g||!isGroupClosed(g))return null;
+        return {team:name};
+      }
+
       var r32Resolved={};
       R32_MATCHES.forEach(function(m){
         r32Resolved[m.id]={
-          ta:groupSlotTeam(m.a,realRowsByGroup),
-          tb:m.b.type==='3'?null:groupSlotTeam(m.b,realRowsByGroup),
-          labelA:m.a.type+'º Grupo '+m.a.g,
-          labelB:m.b.type==='3'?'3º '+m.b.cands.join('/'):(m.b.type+'º Grupo '+m.b.g),
+          ta:resolvedTeam(m.taName),
+          tb:resolvedTeam(m.tbName),
+          labelA:m.taName,
+          labelB:m.tbName,
           date:m.date,time:m.time
         };
       });
