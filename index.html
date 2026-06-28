@@ -1084,74 +1084,9 @@ function BolaoApp(){
     return g;
   },[allGuessMatches]);
 
-  var guessesTab=h('div',null,
-    // Sub-tab buttons
-    h('div',{style:{display:'flex',gap:0,marginBottom:16,background:'#16243e',borderRadius:10,padding:4,width:'fit-content'}},
-      h('button',{
-        onClick:function(){setGSubTab('today');},
-        style:{padding:'8px 20px',borderRadius:8,border:'none',cursor:'pointer',fontFamily:'inherit',
-          fontWeight:700,fontSize:13,transition:'all .2s',
-          background:gSubTab==='today'?'#facc15':'transparent',
-          color:gSubTab==='today'?'#0d1b34':'#94a3b8'}
-      },'📅 Palpites do Dia'),
-      h('button',{
-        onClick:function(){setGSubTab('all');},
-        style:{padding:'8px 20px',borderRadius:8,border:'none',cursor:'pointer',fontFamily:'inherit',
-          fontWeight:700,fontSize:13,transition:'all .2s',
-          background:gSubTab==='all'?'#facc15':'transparent',
-          color:gSubTab==='all'?'#0d1b34':'#94a3b8'}
-      },'🗂 Todos')
-    ),
+  
 
-    // SUB-TAB: Palpites do Dia
-    gSubTab==='today'?h('div',null,
-      todayGuessMatches.length===0
-        ?h('div',{style:{textAlign:'center',color:'#64748b',padding:'40px 0',fontSize:14}},'Nenhum jogo hoje 📅')
-        :todayGuessMatches.map(function(m){return GuessMatchCard(m);})
-    ):null,
-
-    // SUB-TAB: Todos (grouped by date with group filter)
-    gSubTab==='all'?h('div',null,
-      // Upcoming / Finished inner sub-tabs
-      h('div',{style:{display:'flex',gap:0,marginBottom:14,background:'#16243e',borderRadius:10,padding:4,width:'fit-content'}},
-        h('button',{
-          onClick:function(){setGAllSubTab('upcoming');},
-          style:{padding:'7px 16px',borderRadius:8,border:'none',cursor:'pointer',fontFamily:'inherit',
-            fontWeight:700,fontSize:12,transition:'all .2s',
-            background:gAllSubTab==='upcoming'?'#facc15':'transparent',
-            color:gAllSubTab==='upcoming'?'#0d1b34':'#94a3b8'}
-        },'⏳ A Realizar'),
-        h('button',{
-          onClick:function(){setGAllSubTab('finished');},
-          style:{padding:'7px 16px',borderRadius:8,border:'none',cursor:'pointer',fontFamily:'inherit',
-            fontWeight:700,fontSize:12,transition:'all .2s',
-            background:gAllSubTab==='finished'?'#facc15':'transparent',
-            color:gAllSubTab==='finished'?'#0d1b34':'#94a3b8'}
-        },'✅ Finalizados')
-      ),
-      // Group filter
-      h('div',{style:{display:'flex',gap:6,flexWrap:'wrap',marginBottom:16}},
-        ['ALL'].concat(GROUPS).map(function(g){
-          return h('button',{key:g,className:'fbtn'+(gFilter2===g?' active':''),
-            onClick:function(){setGFilter2(g);}},
-            g==='ALL'?'Todos':'Grupo '+g
-          );
-        })
-      ),
-      // Matches by date
-      allGuessMatches.length===0
-        ?h('div',{style:{textAlign:'center',color:'#64748b',padding:'40px 0',fontSize:14}},
-            gAllSubTab==='upcoming'?'Nenhum jogo a realizar 🗓':'Nenhum jogo finalizado ainda ✅')
-        :Object.entries(allGuessesByDate).map(function(entry){
-            var date=entry[0],matches=entry[1];
-            return h('div',{key:date,style:{marginBottom:20}},
-              h('div',{style:{fontSize:11,fontWeight:700,color:'#facc15',textTransform:'uppercase',
-                letterSpacing:2,marginBottom:8,paddingBottom:5,borderBottom:'1px solid #243356'}},'📅 '+date),
-              matches.map(function(m){return GuessMatchCard(m);})
-            );
-          })
-    ):null
-  );
+  
 
 
   // ── Estado para palpites do mata-mata ───────────────────────────────────
@@ -1194,6 +1129,10 @@ function BolaoApp(){
     var cutoff=new Date(matchDate.getTime()-30*60000); // 30 min antes
     return new Date()<cutoff;
   }
+
+
+
+
 
   // ── BRACKET (MATA-MATA) — formato simétrico estilo GE (duas metades + final no centro) ──
   var R32_MATCHES=[
@@ -1273,6 +1212,140 @@ function BolaoApp(){
     if(d>0)return d+'d '+h+'h '+m+'m';
     return String(h).padStart(2,'0')+'h '+String(m).padStart(2,'0')+'m '+String(s).padStart(2,'0')+'s';
   },[nextCutoff,nowTick]);
+
+  // Card de palpites do mata-mata (mesmo estilo visual da fase de grupos),
+  // mostrado na aba "Palpites do Dia" assim que o prazo daquele jogo se esgota.
+  function KnockoutGuessCard(m){
+    // m: {id, taName, tbName, date, time} — um confronto da Rodada de 32/Oitavas/etc.
+    var myGuesses=koGuesses[m.id]||{};
+    var hasGuesses=Object.keys(myGuesses).length>0;
+    var realKO=(typeof window!=='undefined'&&window.KO_RESULTS&&window.KO_RESULTS[m.id])||null;
+    var hasReal=realKO&&realKO.sa!==null&&realKO.sa!==undefined;
+    return h('div',{key:'ko_'+m.id,style:{background:'#1a2d52',borderRadius:12,overflow:'hidden',border:'1px solid #243356',marginBottom:14}},
+      h('div',{style:{background:'#16243e',padding:'9px 14px',display:'flex',alignItems:'center',gap:8,borderBottom:'1px solid #243356',flexWrap:'wrap'}},
+        h('div',{style:{display:'flex',flexDirection:'column',alignItems:'center',minWidth:38}},
+          h('span',{style:{fontSize:11,fontWeight:700,color:'#facc15'}},m.time),
+          h('span',{style:{fontSize:9,color:'#64748b'}},m.date)
+        ),
+        h('span',{style:{fontSize:9,background:'#0d1b34',color:'#a78bfa',padding:'1px 5px',borderRadius:8,fontWeight:700}},'Mata-Mata · '+m.id),
+        h('span',{style:{fontWeight:700,fontSize:13,flex:1,display:'flex',alignItems:'center',gap:4,flexWrap:'wrap'}},
+          flagImg(m.taName,18),' ',m.taName,'  ×  ',m.tbName,' ',flagImg(m.tbName,18)
+        ),
+        hasReal?h('span',{style:{background:'#22c55e22',border:'1px solid #22c55e',borderRadius:8,padding:'2px 10px',fontSize:13,fontWeight:800,color:'#22c55e'}},realKO.sa+' × '+realKO.sb)
+        :h('span',{style:{fontSize:11,color:'#94a3b8'}},'sem resultado')
+      ),
+      !hasGuesses?h('div',{style:{padding:'14px',textAlign:'center',color:'#64748b',fontSize:12}},'Nenhum palpite enviado para este jogo'):
+      h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(148px,1fr))',gap:1,background:'#243356'}},
+        RAW.map(function(p){
+          var g=myGuesses[p.name];
+          var pts=(g&&hasReal)?calcPtsKnockout(realKO,g):null;
+          var bg=pts!==null?PTS_BG[pts]:'#1a2d52';
+          var bc=pts!==null?PTS_COL[pts]:'#1a2d52';
+          var tc=pts!==null?PTS_COL[pts]:'#94a3b8';
+          if(!g)return h('div',{key:p.name,style:{background:'#1a2d52',padding:'8px 11px',borderLeft:'3px solid #1a2d52'}},
+            h('div',{style:{fontSize:10,color:'#94a3b8',marginBottom:2,fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},p.name),
+            h('div',{style:{fontSize:13,color:'#4b5563'}},'— não palpitou —')
+          );
+          return h('div',{key:p.name,style:{background:bg,padding:'8px 11px',borderLeft:'3px solid '+bc}},
+            h('div',{style:{fontSize:10,color:'#94a3b8',marginBottom:2,fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},p.name),
+            h('div',{style:{display:'flex',alignItems:'center',gap:4}},
+              h('span',{style:{fontSize:16,fontWeight:800,color:'#facc15'}},g.sa,' ',h('span',{style:{color:'#64748b',fontSize:12}},'×'),' ',g.sb),
+              (g.sa===g.sb&&g.who)?h('span',{style:{fontSize:9,color:'#94a3b8',marginLeft:4}},'('+(g.who==='A'?m.taName:m.tbName).slice(0,10)+')'):null,
+              pts!==null?h('span',{style:{marginLeft:'auto',fontSize:10,fontWeight:800,color:tc,border:'1px solid '+bc,borderRadius:5,padding:'1px 4px'}},pts+'pts'):null
+            )
+          );
+        })
+      )
+    );
+  }
+
+  // Jogos do mata-mata cujo prazo já encerrou E que acontecem hoje
+  var todayClosedKoMatches=useMemo(function(){
+    var allKo=R32_MATCHES.concat(R16_PAIRS.map(function(m){
+        return {id:m.id,taName:'Venc. '+m.a,tbName:'Venc. '+m.b,date:m.date,time:m.time};
+      })).concat(QF_PAIRS.map(function(m){
+        return {id:m.id,taName:'Venc. '+m.a,tbName:'Venc. '+m.b,date:m.date,time:m.time};
+      })).concat(SF_PAIRS.map(function(m){
+        return {id:m.id,taName:'Venc. '+m.a,tbName:'Venc. '+m.b,date:m.date,time:m.time};
+      }));
+    return allKo.filter(function(m){
+      if(m.date!==todayStr)return false;
+      // Prazo encerrado = NÃO está mais aberto para palpite
+      var stillOpen=koMatchOpen(m.id,{team:m.taName},{team:m.tbName},m.date,m.time);
+      return !stillOpen;
+    });
+  },[todayStr,nowTick]);
+
+  var guessesTab=h('div',null,
+    // Sub-tab buttons
+    h('div',{style:{display:'flex',gap:0,marginBottom:16,background:'#16243e',borderRadius:10,padding:4,width:'fit-content'}},
+      h('button',{
+        onClick:function(){setGSubTab('today');},
+        style:{padding:'8px 20px',borderRadius:8,border:'none',cursor:'pointer',fontFamily:'inherit',
+          fontWeight:700,fontSize:13,transition:'all .2s',
+          background:gSubTab==='today'?'#facc15':'transparent',
+          color:gSubTab==='today'?'#0d1b34':'#94a3b8'}
+      },'📅 Palpites do Dia'),
+      h('button',{
+        onClick:function(){setGSubTab('all');},
+        style:{padding:'8px 20px',borderRadius:8,border:'none',cursor:'pointer',fontFamily:'inherit',
+          fontWeight:700,fontSize:13,transition:'all .2s',
+          background:gSubTab==='all'?'#facc15':'transparent',
+          color:gSubTab==='all'?'#0d1b34':'#94a3b8'}
+      },'🗂 Todos')
+    ),
+
+    // SUB-TAB: Palpites do Dia
+    gSubTab==='today'?h('div',null,
+      (todayGuessMatches.length===0&&todayClosedKoMatches.length===0)
+        ?h('div',{style:{textAlign:'center',color:'#64748b',padding:'40px 0',fontSize:14}},'Nenhum jogo hoje 📅')
+        :todayGuessMatches.map(function(m){return GuessMatchCard(m);}).concat(
+           todayClosedKoMatches.map(function(m){return KnockoutGuessCard(m);})
+         )
+    ):null,
+
+    // SUB-TAB: Todos (grouped by date with group filter)
+    gSubTab==='all'?h('div',null,
+      // Upcoming / Finished inner sub-tabs
+      h('div',{style:{display:'flex',gap:0,marginBottom:14,background:'#16243e',borderRadius:10,padding:4,width:'fit-content'}},
+        h('button',{
+          onClick:function(){setGAllSubTab('upcoming');},
+          style:{padding:'7px 16px',borderRadius:8,border:'none',cursor:'pointer',fontFamily:'inherit',
+            fontWeight:700,fontSize:12,transition:'all .2s',
+            background:gAllSubTab==='upcoming'?'#facc15':'transparent',
+            color:gAllSubTab==='upcoming'?'#0d1b34':'#94a3b8'}
+        },'⏳ A Realizar'),
+        h('button',{
+          onClick:function(){setGAllSubTab('finished');},
+          style:{padding:'7px 16px',borderRadius:8,border:'none',cursor:'pointer',fontFamily:'inherit',
+            fontWeight:700,fontSize:12,transition:'all .2s',
+            background:gAllSubTab==='finished'?'#facc15':'transparent',
+            color:gAllSubTab==='finished'?'#0d1b34':'#94a3b8'}
+        },'✅ Finalizados')
+      ),
+      // Group filter
+      h('div',{style:{display:'flex',gap:6,flexWrap:'wrap',marginBottom:16}},
+        ['ALL'].concat(GROUPS).map(function(g){
+          return h('button',{key:g,className:'fbtn'+(gFilter2===g?' active':''),
+            onClick:function(){setGFilter2(g);}},
+            g==='ALL'?'Todos':'Grupo '+g
+          );
+        })
+      ),
+      // Matches by date
+      allGuessMatches.length===0
+        ?h('div',{style:{textAlign:'center',color:'#64748b',padding:'40px 0',fontSize:14}},
+            gAllSubTab==='upcoming'?'Nenhum jogo a realizar 🗓':'Nenhum jogo finalizado ainda ✅')
+        :Object.entries(allGuessesByDate).map(function(entry){
+            var date=entry[0],matches=entry[1];
+            return h('div',{key:date,style:{marginBottom:20}},
+              h('div',{style:{fontSize:11,fontWeight:700,color:'#facc15',textTransform:'uppercase',
+                letterSpacing:2,marginBottom:8,paddingBottom:5,borderBottom:'1px solid #243356'}},'📅 '+date),
+              matches.map(function(m){return GuessMatchCard(m);})
+            );
+          })
+    ):null
+  );
 
   // Divisão oficial em duas metades simétricas (lado esquerdo alimenta a Semi M101,
   // lado direito alimenta a Semi M102) — espelha o layout do GE
@@ -1372,26 +1445,6 @@ function BolaoApp(){
             isOpen?'🔓 Palpitar':isConfirmed?'🔒 Palpites encerrados':'🔒 Aguardando confronto',
             isConfirmed?h('span',{style:{marginLeft:4,color:'#4a6090',fontWeight:400}},'('+guessCount+'/'+RAW.length+')'):null
           ),
-          // Assim que o prazo se esgota, os palpites de TODOS aparecem automaticamente —
-          // mesmo estilo de grade colorida usado na fase de grupos
-          (!isOpen&&isConfirmed&&guessCount>0)?h('div',{style:{display:'grid',gridTemplateColumns:'1fr',gap:1,background:'#243356',borderTop:'1px solid #243356'}},
-            RAW.filter(function(p){return myGuesses[p.name];}).map(function(p){
-              var g=myGuesses[p.name];
-              // resultKO (real do jogo do mata-mata) ainda não é alimentado automaticamente
-              // pela ESPN nesta versão — quando houver, basta popular resultKO[id]={sa,sb,who,decidedBy}
-              var realKO=(window.KO_RESULTS&&window.KO_RESULTS[id])||null;
-              var pts=realKO?calcPtsKnockout(realKO,g):null;
-              var bg=pts!==null?PTS_BG[pts]:'#1a2d52';
-              var bc=pts!==null?PTS_COL[pts]:'#1a2d52';
-              var tc=pts!==null?PTS_COL[pts]:'#94a3b8';
-              return h('div',{key:p.name,style:{background:bg,padding:'6px 8px',borderLeft:'3px solid '+bc,display:'flex',alignItems:'center',gap:6}},
-                h('span',{style:{fontSize:10,color:'#94a3b8',fontWeight:600,flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},p.name),
-                h('span',{style:{fontSize:13,fontWeight:800,color:'#facc15'}},g.sa+'×'+g.sb),
-                g.sa===g.sb&&g.who?h('span',{style:{fontSize:9,color:'#94a3b8'}},'('+(g.who==='A'?labelA:labelB).slice(0,3)+')'):null,
-                pts!==null?h('span',{style:{fontSize:9,fontWeight:800,color:tc,border:'1px solid '+bc,borderRadius:5,padding:'1px 4px'}},pts+'pts'):null
-              );
-            })
-          ):null
         );
       }
 
