@@ -439,6 +439,7 @@ function BolaoApp(){
   var s1=useState({});      var results=s1[0],setResults=s1[1];
   var s2=useState('ranking'); var tab=s2[0],setTab=s2[1];
   var s3=useState('TODAY'); var rFilter=s3[0],setRFilter=s3[1];
+  var s_rph=useState('groups'); var rPhase=s_rph[0],setRPhase=s_rph[1]; // 'groups' ou 'knockout'
   var s4=useState('ALL');   var gFilter=s4[0],setGFilter=s4[1]; // guesses tab filter
   var s9=useState('ok');    var dbSt=s9[0],setDbSt=s9[1];
 
@@ -824,31 +825,7 @@ function BolaoApp(){
   }
 
   var rFilters=['TODAY','DONE','ALL',...GROUPS];
-  var resultsTab=h('div',null,
-
-    h('div',{style:{display:'flex',gap:6,flexWrap:'wrap',marginBottom:16}},
-      rFilters.map(function(g){
-        var lbl=g==='TODAY'?'📅 Hoje':g==='DONE'?'✅ Concluídos':g==='ALL'?'Todos':'Grupo '+g;
-        return h('button',{key:g,className:'fbtn'+(rFilter===g?' active':''),onClick:function(){setRFilter(g);}},lbl);
-      })
-    ),
-    rMatches.length===0?h('div',{style:{textAlign:'center',color:'#64748b',padding:'40px 0',fontSize:14}},
-      rFilter==='TODAY'?'Nenhum jogo hoje 📅':rFilter==='DONE'?'Nenhum jogo concluído ainda':'Nenhum jogo encontrado'
-    ):null,
-    Object.entries(byDate).map(function(entry){
-      var date=entry[0],matches=entry[1];
-      return h('div',{key:date,style:{marginBottom:20}},
-        h('div',{style:{fontSize:11,fontWeight:700,color:'#facc15',textTransform:'uppercase',letterSpacing:2,marginBottom:8,paddingBottom:5,borderBottom:'1px solid #243356'}},'📅 '+date),
-        matches.map(function(m){return MatchRow(m);})
-      );
-    }),
-    h('div',{style:{padding:'8px 12px',background:'#16243e',borderRadius:8,fontSize:11,color:'#94a3b8',marginTop:4}},
-      h('strong',{style:{color:'#facc15'}},'Legenda: '),
-      [['#22c55e','5pts','Placar exato'],['#3b82f6','4pts','Vencedor+saldo'],['#f59e0b','2pts','Só vencedor'],['#ef4444','0pts','Errou']].map(function(x){
-        return h('span',{key:x[1],style:{marginLeft:10}},h('span',{style:{display:'inline-block',width:8,height:8,borderRadius:'50%',background:x[0],marginRight:3,verticalAlign:'middle'}}),h('strong',null,x[1]),' — ',x[2]);
-      })
-    )
-  );
+  
 
   // ── RANKING TAB ──────────────────────────────────────────────────────────
   
@@ -977,6 +954,7 @@ function BolaoApp(){
   );
 
   // ── GUESSES TAB ─────────────────────────────────────────────────────────
+  var s_gph=useState('groups'); var gPhase=s_gph[0],setGPhase=s_gph[1]; // 'groups' ou 'knockout'
   var s_gst=useState('today'); var gSubTab=s_gst[0],setGSubTab=s_gst[1];
   var s_gf2=useState('ALL');   var gFilter2=s_gf2[0],setGFilter2=s_gf2[1];
   var s_gst2=useState('upcoming'); var gAllSubTab=s_gst2[0],setGAllSubTab=s_gst2[1];
@@ -1220,6 +1198,98 @@ function BolaoApp(){
     return (r&&r.isFinal)?r.winnerName:null;
   }
 
+  // Lista completa de TODOS os jogos do mata-mata (R32+Oitavas+Quartas+Semis),
+  // com taName/tbName resolvidos automaticamente (nome real ou "Venc. Mxx")
+  var allKoMatches=useMemo(function(){
+    var list=R32_MATCHES.map(function(m){
+      return {id:m.id,taName:m.taName,tbName:m.tbName,date:m.date,time:m.time};
+    });
+    [R16_PAIRS,QF_PAIRS,SF_PAIRS].forEach(function(arr){
+      arr.forEach(function(m){
+        var ta=koWinnerName(m.a)||('Venc. '+m.a);
+        var tb=koWinnerName(m.b)||('Venc. '+m.b);
+        list.push({id:m.id,taName:ta,tbName:tb,date:m.date,time:m.time});
+      });
+    });
+    return list;
+  },[koResults]);
+
+  // Linha de resultado do mata-mata (estilo MatchRow, mas para confrontos do bracket)
+  function KnockoutMatchRow(m){
+    var realKO=koResults[m.id]||null;
+    var hasReal=realKO&&realKO.sa!==null&&realKO.sa!==undefined;
+    var isLv=realKO&&realKO.isLive;
+    return h('div',{key:'kor_'+m.id,style:{background:'#1a2d52',borderRadius:10,padding:'10px 14px',marginBottom:8,border:'1px solid '+(isLv?'#22c55e':'#243356'),display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}},
+      h('div',{style:{display:'flex',flexDirection:'column',alignItems:'center',minWidth:42}},
+        h('span',{style:{fontSize:11,fontWeight:700,color:isLv?'#22c55e':'#facc15'}},m.time),
+        h('span',{style:{fontSize:9,color:'#64748b'}},m.date)
+      ),
+      h('span',{style:{fontSize:9,background:'#0d1b34',color:'#a78bfa',padding:'1px 5px',borderRadius:8,fontWeight:700}},m.id),
+      h('span',{style:{flex:1,fontWeight:600,fontSize:13,display:'flex',alignItems:'center',gap:5,flexWrap:'wrap',justifyContent:'center'}},
+        flagImg(m.taName,18),' ',m.taName,'  ×  ',m.tbName,' ',flagImg(m.tbName,18)
+      ),
+      isLv?h('span',{style:{background:'#1c1a00',border:'1px solid #facc15',borderRadius:8,padding:'2px 10px',fontSize:16,fontWeight:800,color:'#facc15'}},realKO.sa+' × '+realKO.sb):
+      hasReal?h('div',{style:{display:'flex',alignItems:'center',gap:6}},
+        h('span',{style:{background:'#16243e',borderRadius:8,padding:'2px 10px',fontSize:16,fontWeight:800,color:'#facc15'}},realKO.sa+' × '+realKO.sb),
+        realKO.decidedBy==='penalties'?h('span',{style:{fontSize:9,color:'#a78bfa',fontWeight:700}},'⚽ pênaltis'):null
+      ):
+      h('span',{style:{fontSize:11,color:'#64748b'}},'sem resultado')
+    );
+  }
+
+  var resultsTab=h('div',null,
+    // Fase: Grupos x Mata-Mata
+    h('div',{style:{display:'flex',gap:0,marginBottom:18,background:'#0d1b34',borderRadius:10,padding:4,width:'fit-content',border:'1px solid #243356'}},
+      h('button',{
+        onClick:function(){setRPhase('groups');},
+        style:{padding:'9px 22px',borderRadius:8,border:'none',cursor:'pointer',fontFamily:'inherit',
+          fontWeight:800,fontSize:13,transition:'all .2s',
+          background:rPhase==='groups'?'#3b82f6':'transparent',
+          color:rPhase==='groups'?'#fff':'#94a3b8'}
+      },'🌍 Fase de Grupos'),
+      h('button',{
+        onClick:function(){setRPhase('knockout');},
+        style:{padding:'9px 22px',borderRadius:8,border:'none',cursor:'pointer',fontFamily:'inherit',
+          fontWeight:800,fontSize:13,transition:'all .2s',
+          background:rPhase==='knockout'?'#facc15':'transparent',
+          color:rPhase==='knockout'?'#0d1b34':'#94a3b8'}
+      },'🏆 Mata-Mata')
+    ),
+
+    rPhase==='groups'?h('div',null,
+
+    h('div',{style:{display:'flex',gap:6,flexWrap:'wrap',marginBottom:16}},
+      rFilters.map(function(g){
+        var lbl=g==='TODAY'?'📅 Hoje':g==='DONE'?'✅ Concluídos':g==='ALL'?'Todos':'Grupo '+g;
+        return h('button',{key:g,className:'fbtn'+(rFilter===g?' active':''),onClick:function(){setRFilter(g);}},lbl);
+      })
+    ),
+    rMatches.length===0?h('div',{style:{textAlign:'center',color:'#64748b',padding:'40px 0',fontSize:14}},
+      rFilter==='TODAY'?'Nenhum jogo hoje 📅':rFilter==='DONE'?'Nenhum jogo concluído ainda':'Nenhum jogo encontrado'
+    ):null,
+    Object.entries(byDate).map(function(entry){
+      var date=entry[0],matches=entry[1];
+      return h('div',{key:date,style:{marginBottom:20}},
+        h('div',{style:{fontSize:11,fontWeight:700,color:'#facc15',textTransform:'uppercase',letterSpacing:2,marginBottom:8,paddingBottom:5,borderBottom:'1px solid #243356'}},'📅 '+date),
+        matches.map(function(m){return MatchRow(m);})
+      );
+    }),
+    h('div',{style:{padding:'8px 12px',background:'#16243e',borderRadius:8,fontSize:11,color:'#94a3b8',marginTop:4}},
+      h('strong',{style:{color:'#facc15'}},'Legenda: '),
+      [['#22c55e','5pts','Placar exato'],['#3b82f6','4pts','Vencedor+saldo'],['#f59e0b','2pts','Só vencedor'],['#ef4444','0pts','Errou']].map(function(x){
+        return h('span',{key:x[1],style:{marginLeft:10}},h('span',{style:{display:'inline-block',width:8,height:8,borderRadius:'50%',background:x[0],marginRight:3,verticalAlign:'middle'}}),h('strong',null,x[1]),' — ',x[2]);
+      })
+    )
+    ):null,
+
+    // SEÇÃO: Mata-Mata — todos os 30 confrontos do bracket
+    rPhase==='knockout'?h('div',null,
+      allKoMatches.length===0
+        ?h('div',{style:{textAlign:'center',color:'#64748b',padding:'40px 0',fontSize:14}},'Nenhum jogo do mata-mata ainda')
+        :allKoMatches.map(function(m){return KnockoutMatchRow(m);})
+    ):null
+  );
+
   // ── Pontuação do mata-mata por participante (somada ao Ranking geral) ───────
   var koPoints=useMemo(function(){
     var t={};
@@ -1422,6 +1492,25 @@ function BolaoApp(){
   },[todayStr,nowTick]);
 
   var guessesTab=h('div',null,
+    // Fase: Grupos x Mata-Mata
+    h('div',{style:{display:'flex',gap:0,marginBottom:18,background:'#0d1b34',borderRadius:10,padding:4,width:'fit-content',border:'1px solid #243356'}},
+      h('button',{
+        onClick:function(){setGPhase('groups');},
+        style:{padding:'9px 22px',borderRadius:8,border:'none',cursor:'pointer',fontFamily:'inherit',
+          fontWeight:800,fontSize:13,transition:'all .2s',
+          background:gPhase==='groups'?'#3b82f6':'transparent',
+          color:gPhase==='groups'?'#fff':'#94a3b8'}
+      },'🌍 Fase de Grupos'),
+      h('button',{
+        onClick:function(){setGPhase('knockout');},
+        style:{padding:'9px 22px',borderRadius:8,border:'none',cursor:'pointer',fontFamily:'inherit',
+          fontWeight:800,fontSize:13,transition:'all .2s',
+          background:gPhase==='knockout'?'#facc15':'transparent',
+          color:gPhase==='knockout'?'#0d1b34':'#94a3b8'}
+      },'🏆 Mata-Mata')
+    ),
+
+    gPhase==='groups'?h('div',null,
     // Sub-tab buttons
     h('div',{style:{display:'flex',gap:0,marginBottom:16,background:'#16243e',borderRadius:10,padding:4,width:'fit-content'}},
       h('button',{
@@ -1489,6 +1578,12 @@ function BolaoApp(){
               matches.map(function(m){return GuessMatchCard(m);})
             );
           })
+    ):null
+    ):null,
+
+    // SEÇÃO: Mata-Mata — lista todos os 30 confrontos (R32+Oitavas+Quartas+Semis)
+    gPhase==='knockout'?h('div',null,
+      allKoMatches.map(function(m){return KnockoutGuessCard(m);})
     ):null
   );
 
