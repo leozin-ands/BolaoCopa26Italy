@@ -1428,6 +1428,9 @@ function BolaoApp(){
     var hasGuesses=Object.keys(myGuesses).length>0;
     var realKO=koResults[m.id]||null;
     var hasReal=realKO&&realKO.sa!==null&&realKO.sa!==undefined;
+    // Enquanto o prazo de envio ainda está aberto (faltam >30min pro jogo),
+    // os palpites de todos ficam OCULTOS — só aparecem depois do prazo encerrar.
+    var isStillOpen=koMatchOpen(m.id,{team:m.taName},{team:m.tbName},m.date,m.time);
     return h('div',{key:'ko_'+m.id,style:{background:'#1a2d52',borderRadius:12,overflow:'hidden',border:'1px solid #243356',marginBottom:14}},
       h('div',{style:{background:'#16243e',padding:'9px 14px',display:'flex',alignItems:'center',gap:8,borderBottom:'1px solid #243356',flexWrap:'wrap'}},
         h('div',{style:{display:'flex',flexDirection:'column',alignItems:'center',minWidth:38}},
@@ -1441,6 +1444,9 @@ function BolaoApp(){
         hasReal?h('span',{style:{background:'#22c55e22',border:'1px solid #22c55e',borderRadius:8,padding:'2px 10px',fontSize:13,fontWeight:800,color:'#22c55e'}},realKO.sa+' × '+realKO.sb)
         :h('span',{style:{fontSize:11,color:'#94a3b8'}},'sem resultado')
       ),
+      isStillOpen?h('div',{style:{padding:'14px',textAlign:'center',color:'#facc15',fontSize:12,fontWeight:600,display:'flex',alignItems:'center',justifyContent:'center',gap:6}},
+        '🔒 Os palpites ficarão visíveis quando o prazo de envio encerrar (30min antes do jogo)'
+      ):
       !hasGuesses?h('div',{style:{padding:'14px',textAlign:'center',color:'#64748b',fontSize:12}},'Nenhum palpite enviado para este jogo'):
       h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(148px,1fr))',gap:1,background:'#243356'}},
         RAW.map(function(p){
