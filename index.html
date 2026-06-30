@@ -85,6 +85,12 @@ var KNOWN_RESULTS=[
 var KNOWN_KO_RESULTS=[
   // África do Sul 0 x 1 Canadá (M75) — gol nos acréscimos do 2º tempo, sem prorrogação/pênaltis
   {id:'M75', sa:0, sb:1, who:null, decidedBy:'regulation', winnerName:'Canadá'},
+  // Brasil 2 x 1 Japão (M81) — vitória direta no tempo normal, sem prorrogação/pênaltis
+  {id:'M81', sa:2, sb:1, who:null, decidedBy:'regulation', winnerName:'Brasil'},
+  // Alemanha 1 x 1 Paraguai (M73) — empate no tempo normal e prorrogação, Paraguai venceu nos pênaltis (4x3)
+  {id:'M73', sa:1, sb:1, who:'B', decidedBy:'penalties', winnerName:'Paraguai'},
+  // Holanda 1 x 1 Marrocos (M76) — empate no tempo normal e prorrogação, Marrocos venceu nos pênaltis (3x2)
+  {id:'M76', sa:1, sb:1, who:'B', decidedBy:'penalties', winnerName:'Marrocos'},
 ];
 window.addEventListener('load',function(){
   if(!_db)return;
