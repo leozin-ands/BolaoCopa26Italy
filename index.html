@@ -1172,12 +1172,15 @@ function BolaoApp(){
           isLive:false,isFinal:true
         };
       }
-      // 2) ESPN sobrepõe quando tiver o jogo (cobre ao vivo + finais mais recentes)
+      // 2) ESPN sobrepõe quando tiver o jogo — mas só quando o estado dela for
+      //    "melhor" que o que já temos: ao vivo (sempre atualiza) ou final
+      //    (substitui só se o que tínhamos não era final, ou se confirma o mesmo).
+      //    Isso evita que um ESPN ainda não-final apague um resultado já confirmado.
       var ev=espnEvents.find(function(e){
         return (e.homeTeam===m.taName&&e.awayTeam===m.tbName)||
                (e.homeTeam===m.tbName&&e.awayTeam===m.taName);
       });
-      if(ev){
+      if(ev&&(ev.isFinal||ev.isLive||ev.isHalf||!map[m.id])){
         var swapped=ev.homeTeam===m.tbName;
         var sa=swapped?ev.awayScore:ev.homeScore;
         var sb=swapped?ev.homeScore:ev.awayScore;
