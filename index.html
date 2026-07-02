@@ -297,6 +297,10 @@ function calcPtsKnockout(real,guess){
   var guessIsDraw=ga===gb;
   var realWasDraw=ra===rb; // jogo real empatou no tempo normal (foi a prorrogação/pênaltis)
 
+  // Inferir winnerName do placar quando ESPN não retorna a flag winner explicitamente
+  // Ex: 3x2 → ta ganhou; se winnerName vier null/undefined, calculamos pelo placar
+  var inferredWinner=real.winnerName||(ra>rb?real.taName:rb>ra?real.tbName:null);
+
   // Quem o participante escolheu como classificado:
   // • palpite empate → usa o campo 'who' explícito
   // • palpite vitória direta → o time que o participante achou que ganharia
@@ -306,7 +310,7 @@ function calcPtsKnockout(real,guess){
   }else if(!guessIsDraw){
     guessedAdvancerName=ga>gb?real.taName:real.tbName;
   }
-  var guessedRightAdvancer=!!(guessedAdvancerName&&real.winnerName&&guessedAdvancerName===real.winnerName);
+  var guessedRightAdvancer=!!(guessedAdvancerName&&inferredWinner&&guessedAdvancerName===inferredWinner);
   var classBonus=guessedRightAdvancer?3:0; // bônus por acertar o classificado
 
   // ── 1) Placar exato (em qualquer cenário) ───────────────────────────────────
@@ -326,7 +330,7 @@ function calcPtsKnockout(real,guess){
   // ── 3) Acertou o vencedor final (mesmo que o jogo tenha sido decidido na prorrogação/pênaltis) ──
   var guessWinnerSide=ga>gb?'A':gb>ga?'B':null; // null = palpite foi empate (já tratado acima)
   var guessedWinnerName=guessWinnerSide==='A'?real.taName:guessWinnerSide==='B'?real.tbName:null;
-  if(guessedWinnerName&&real.winnerName&&guessedWinnerName===real.winnerName){
+  if(guessedWinnerName&&inferredWinner&&guessedWinnerName===inferredWinner){
     if(!realWasDraw){
       // Jogo real decidido dentro dos 90 minutos
       if(Math.abs(ra-rb)===Math.abs(ga-gb))return 4+classBonus; // acertou vencedor + saldo + classificado
@@ -1166,14 +1170,9 @@ function BolaoApp(){
   var s_kow=useState(''); var koGuessWho=s_kow[0],setKoGuessWho=s_kow[1]; // 'A' ou 'B' se empate
   var s_koc=useState(false); var koConfirming=s_koc[0],setKoConfirming=s_koc[1];
   var s_kog=useState({}); var koGuesses=s_kog[0],setKoGuesses=s_kog[1]; // palpites salvos {matchId: {participantName: {sa,sb,who}}}
-  var s_kov=useState({}); var koOverride=s_kov[0],setKoOverride=s_kov[1]; // pontos manuais {matchId: {participantName: pts}}
   var s_kopw=useState(''); var koPassInput=s_kopw[0],setKoPassInput=s_kopw[1]; // senha digitada
   var s_koae=useState(false); var koAuthed=s_koae[0],setKoAuthed=s_koae[1]; // senha validada com sucesso
   var s_koer=useState(''); var koPassErr=s_koer[0],setKoPassErr=s_koer[1]; // mensagem de erro da senha
-  var s_koaa=useState(false); var koAdminAuth=s_koaa[0],setKoAdminAuth=s_koaa[1]; // admin autenticado para override
-  var s_koapin=useState(''); var koAdminPinInput=s_koapin[0],setKoAdminPinInput=s_koapin[1]; // pin do admin
-  var s_koam=useState(null); var koAdminMatchId=s_koam[0],setKoAdminMatchId=s_koam[1]; // matchId com painel admin aberto
-  var s_koaptmp=useState({}); var koAdminTmp=s_koaptmp[0],setKoAdminTmp=s_koaptmp[1]; // pts temporários no formulário
   var bracketContainerRef=React.useRef(null);
   var bracketCardRefs=React.useRef({});
   var s_bl=useState([]); var bracketLines=s_bl[0],setBracketLines=s_bl[1];
@@ -1183,13 +1182,7 @@ function BolaoApp(){
   useEffect(function(){
     if(!_db)return;
     _db.ref('ko_guesses').on('value',function(snap){setKoGuesses(snap.val()||{});});
-    _db.ref('ko_points_override').on('value',function(snap){setKoOverride(snap.val()||{});});
   },[]);
-
-  function saveKoPointsOverride(matchId,overrideMap){
-    if(!_db)return;
-    _db.ref('ko_points_override/'+matchId).set(overrideMap);
-  }
 
   function saveKoGuess(matchId,participantName,sa,sb,who){
     if(!_db)return;
@@ -1264,9 +1257,11 @@ function BolaoApp(){
       // 1) Base: resultado já confirmado/salvo no Firebase (ex: KNOWN_KO_RESULTS)
       var fromDB=koResultsFromDB[m.id];
       if(fromDB){
+        // Inferir winnerName do placar quando não foi salvo explicitamente
+        var dbWinner=fromDB.winnerName||(fromDB.sa>fromDB.sb?m.taName:fromDB.sb>fromDB.sa?m.tbName:null);
         map[m.id]={
           sa:fromDB.sa,sb:fromDB.sb,who:fromDB.who||null,
-          winnerName:fromDB.winnerName||null,
+          winnerName:dbWinner,
           taName:m.taName,tbName:m.tbName,
           decidedBy:fromDB.decidedBy||'regulation',
           isLive:false,isFinal:true
@@ -1286,10 +1281,12 @@ function BolaoApp(){
         var sb=swapped?ev.homeScore:ev.awayScore;
         var aWon=swapped?ev.awayWin:ev.homeWin;
         var bWon=swapped?ev.homeWin:ev.awayWin;
+        // Inferir vencedor do placar quando ESPN não retorna winner flag (acontece em alguns jogos)
+        var espnWinner=ev.isFinal?(aWon?m.taName:bWon?m.tbName:(sa>sb?m.taName:sb>sa?m.tbName:null)):null;
         map[m.id]={
           sa:sa,sb:sb,
           who:(ev.isFinal&&sa===sb)?(aWon?'A':bWon?'B':null):null,
-          winnerName:ev.isFinal?(aWon?m.taName:bWon?m.tbName:null):null,
+          winnerName:espnWinner,
           taName:m.taName,tbName:m.tbName,
           decidedBy:ev.decidedBy,
           isLive:ev.isLive||ev.isHalf,
@@ -1400,7 +1397,6 @@ function BolaoApp(){
   );
 
   // ── Pontuação do mata-mata por participante (somada ao Ranking geral) ───────
-  // Prioridade: override manual (admin) > cálculo automático via palpites
   var koPoints=useMemo(function(){
     var t={};
     RAW.forEach(function(p){t[p.name]=0;});
@@ -1408,19 +1404,12 @@ function BolaoApp(){
       var real=koResults[mid];
       if(!real||!real.isFinal)return;
       RAW.forEach(function(p){
-        // 1) Override manual do admin tem prioridade absoluta
-        var ov=koOverride[mid];
-        if(ov&&ov[p.name]!==undefined&&ov[p.name]!==null){
-          t[p.name]+=Number(ov[p.name]);
-          return;
-        }
-        // 2) Cálculo automático via palpites submetidos
         var g=(koGuesses[mid]||{})[p.name];
         if(g)t[p.name]+=calcPtsKnockout(real,g);
       });
     });
     return t;
-  },[koResults,koGuesses,koOverride]);
+  },[koResults,koGuesses]);
 
   var ranked=useMemo(function(){
     return Object.entries(scores).sort(function(a,b){
@@ -1542,15 +1531,9 @@ function BolaoApp(){
   function KnockoutGuessCard(m){
     // m: {id, taName, tbName, date, time} — um confronto da Rodada de 32/Oitavas/etc.
     var myGuesses=koGuesses[m.id]||{};
-    var hasGuesses=Object.keys(myGuesses).length>0;
     var realKO=koResults[m.id]||null;
     var hasReal=realKO&&realKO.sa!==null&&realKO.sa!==undefined;
-    var ovMatch=koOverride[m.id]||{}; // override manual para este jogo
-    var hasOverride=Object.keys(ovMatch).length>0;
-    // Enquanto o prazo de envio ainda está aberto (faltam >30min pro jogo),
-    // os palpites de todos ficam OCULTOS — só aparecem depois do prazo encerrar.
     var isStillOpen=koMatchOpen(m.id,{team:m.taName},{team:m.tbName},m.date,m.time);
-    var isAdminOpen=koAdminMatchId===m.id;
 
     return h('div',{key:'ko_'+m.id,style:{background:'#1a2d52',borderRadius:12,overflow:'hidden',border:'1px solid #243356',marginBottom:14}},
       h('div',{style:{background:'#16243e',padding:'9px 14px',display:'flex',alignItems:'center',gap:8,borderBottom:'1px solid #243356',flexWrap:'wrap'}},
@@ -1559,125 +1542,43 @@ function BolaoApp(){
           h('span',{style:{fontSize:9,color:'#64748b'}},m.date)
         ),
         h('span',{style:{fontSize:9,background:'#0d1b34',color:'#a78bfa',padding:'1px 5px',borderRadius:8,fontWeight:700}},'Mata-Mata · '+m.id),
-        hasOverride?h('span',{style:{fontSize:9,background:'#422006',color:'#fbbf24',padding:'1px 5px',borderRadius:8,fontWeight:700}},'✏️ Manual'):null,
         h('span',{style:{fontWeight:700,fontSize:13,flex:1,display:'flex',alignItems:'center',gap:4,flexWrap:'wrap'}},
           flagImg(m.taName,18),' ',m.taName,'  ×  ',m.tbName,' ',flagImg(m.tbName,18)
         ),
         hasReal?h('span',{style:{background:'#22c55e22',border:'1px solid #22c55e',borderRadius:8,padding:'2px 10px',fontSize:13,fontWeight:800,color:'#22c55e'}},realKO.sa+' × '+realKO.sb)
         :h('span',{style:{fontSize:11,color:'#94a3b8'}},'sem resultado')
       ),
-      isStillOpen?h('div',{style:{padding:'14px',textAlign:'center',color:'#facc15',fontSize:12,fontWeight:600,display:'flex',alignItems:'center',justifyContent:'center',gap:6}},
-        '🔒 Os palpites ficarão visíveis quando o prazo de envio encerrar (30min antes do jogo)'
-      ):
-      h('div',null,
-        // Grade de palpites/pts dos participantes
-        h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(148px,1fr))',gap:1,background:'#243356'}},
-          RAW.map(function(p){
-            var g=myGuesses[p.name];
-            var ovPts=ovMatch[p.name];
-            var hasOv=ovPts!==undefined&&ovPts!==null;
-            // Override tem prioridade; depois cálculo; se nenhum e jogo finalizado → 0
-            var pts=hasOv?Number(ovPts):(g&&hasReal)?calcPtsKnockout(realKO,g):null;
-            var showZero=!hasOv&&!g&&hasReal; // sem palpite e sem override → 0pts em vermelho
-            var bg=showZero?PTS_BG[0]:pts!==null?PTS_BG[pts]:'#1a2d52';
-            var bc=showZero?PTS_COL[0]:pts!==null?PTS_COL[pts]:'#1a2d52';
-            var tc=showZero?PTS_COL[0]:pts!==null?PTS_COL[pts]:'#94a3b8';
-            return h('div',{key:p.name,style:{background:bg,padding:'8px 11px',borderLeft:'3px solid '+bc}},
-              h('div',{style:{fontSize:10,color:'#94a3b8',marginBottom:2,fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},p.name),
-              h('div',{style:{display:'flex',alignItems:'center',gap:4}},
-                showZero
-                  ?h('span',{style:{fontSize:13,color:PTS_COL[0],fontWeight:700}},'— não palpitou —')
-                  :g?h('span',{style:{fontSize:16,fontWeight:800,color:'#facc15'}},g.sa,' ',h('span',{style:{color:'#64748b',fontSize:12}},'×'),' ',g.sb)
-                    :hasOv?h('span',{style:{fontSize:12,color:'#fbbf24',fontWeight:600}},'✏️ override'):null,
-                (g&&g.sa===g.sb&&g.who)?h('span',{style:{fontSize:9,color:'#94a3b8',marginLeft:4}},'('+(g.who==='A'?m.taName:m.tbName).slice(0,10)+')'):null,
-                pts!==null?h('span',{style:{marginLeft:'auto',fontSize:10,fontWeight:800,color:tc,border:'1px solid '+bc,borderRadius:5,padding:'1px 4px'}},pts+'pts')
-                :showZero?h('span',{style:{marginLeft:'auto',fontSize:10,fontWeight:800,color:PTS_COL[0],border:'1px solid '+PTS_COL[0],borderRadius:5,padding:'1px 4px'}},'0pts')
-                :null
-              )
-            );
-          })
-        ),
-
-        // ── Painel de inserção manual de pontos (admin) ──────────────────────
-        !hasReal?null:
-        !isAdminOpen?h('div',{style:{padding:'10px 14px',display:'flex',alignItems:'center',gap:8,borderTop:'1px solid #243356'}},
-          h('span',{style:{fontSize:11,color:'#64748b',flex:1}},'✏️ Inserir pontos manualmente'),
-          koAdminAuth
-            ?h('button',{
-                onClick:function(){
-                  // Pre-fill form with existing pts (override or calculated)
-                  var tmp={};
-                  RAW.forEach(function(p){
-                    var ov2=ovMatch[p.name];
-                    var g2=myGuesses[p.name];
-                    tmp[p.name]=ov2!==undefined?String(ov2):g2&&hasReal?String(calcPtsKnockout(realKO,g2)):'0';
-                  });
-                  setKoAdminTmp(tmp);
-                  setKoAdminMatchId(m.id);
-                },
-                style:{background:'#1c2e50',border:'1px solid #fbbf24',color:'#fbbf24',borderRadius:6,padding:'4px 12px',fontSize:11,fontWeight:700,cursor:'pointer'}
-              },'✏️ Abrir editor')
-            :h('div',{style:{display:'flex',gap:6,alignItems:'center'}},
-                h('input',{type:'text',placeholder:'Senha admin',value:koAdminPinInput,
-                  onChange:function(e){setKoAdminPinInput(e.target.value);},
-                  style:{background:'#0d1b34',border:'1px solid #374151',borderRadius:6,color:'#fff',padding:'4px 8px',fontSize:11,width:110}}),
-                h('button',{
-                  onClick:function(){
-                    if(koAdminPinInput===ADMIN_PASS){setKoAdminAuth(true);setKoAdminPinInput('');}
-                    else{alert('Senha incorreta');}
-                  },
-                  style:{background:'#16243e',border:'1px solid #374151',color:'#94a3b8',borderRadius:6,padding:'4px 10px',fontSize:11,cursor:'pointer'}
-                },'OK')
-              )
-        ):
-
-        // ── Formulário aberto ────────────────────────────────────────────────
-        h('div',{style:{borderTop:'1px solid #fbbf24',padding:'12px 14px',background:'#161f34'}},
-          h('div',{style:{fontSize:12,fontWeight:700,color:'#fbbf24',marginBottom:10}},
-            '✏️ Inserir pontos manualmente — '+m.taName+' × '+m.tbName+' ('+m.id+')'),
-          h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(190px,1fr))',gap:6,marginBottom:12}},
+      isStillOpen
+        ?h('div',{style:{padding:'14px',textAlign:'center',color:'#facc15',fontSize:12,fontWeight:600,display:'flex',alignItems:'center',justifyContent:'center',gap:6}},
+            '🔒 Os palpites ficarão visíveis quando o prazo de envio encerrar (30min antes do jogo)')
+        :h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(148px,1fr))',gap:1,background:'#243356'}},
             RAW.map(function(p){
-              return h('div',{key:p.name,style:{display:'flex',alignItems:'center',gap:6,background:'#1a2d52',borderRadius:6,padding:'5px 8px'}},
-                h('span',{style:{fontSize:11,color:'#94a3b8',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},p.name),
-                h('input',{type:'number',min:0,max:10,value:koAdminTmp[p.name]||'0',
-                  onChange:function(e){
-                    var v=e.target.value;
-                    setKoAdminTmp(function(prev){var n=Object.assign({},prev);n[p.name]=v;return n;});
-                  },
-                  style:{width:44,background:'#0d1b34',border:'1px solid #374151',borderRadius:4,color:'#facc15',
-                    padding:'3px 6px',fontSize:12,fontWeight:700,textAlign:'center'}
-                }),
-                h('span',{style:{fontSize:11,color:'#64748b'}},'pts')
+              var g=myGuesses[p.name];
+              var pts=(g&&hasReal)?calcPtsKnockout(realKO,g):null;
+              var bg=pts!==null?PTS_BG[pts]:'#1a2d52';
+              var bc=pts!==null?PTS_COL[pts]:'#1a2d52';
+              var tc=pts!==null?PTS_COL[pts]:'#94a3b8';
+              if(!g){
+                var noBg=hasReal?PTS_BG[0]:'#1a2d52';
+                var noBc=hasReal?PTS_COL[0]:'#1a2d52';
+                return h('div',{key:p.name,style:{background:noBg,padding:'8px 11px',borderLeft:'3px solid '+noBc}},
+                  h('div',{style:{fontSize:10,color:'#94a3b8',marginBottom:2,fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},p.name),
+                  h('div',{style:{display:'flex',alignItems:'center',gap:4}},
+                    h('span',{style:{fontSize:13,color:hasReal?PTS_COL[0]:'#4b5563',fontWeight:hasReal?700:400}},'— não palpitou —'),
+                    hasReal?h('span',{style:{marginLeft:'auto',fontSize:10,fontWeight:800,color:PTS_COL[0],border:'1px solid '+PTS_COL[0],borderRadius:5,padding:'1px 4px'}},'0pts'):null
+                  )
+                );
+              }
+              return h('div',{key:p.name,style:{background:bg,padding:'8px 11px',borderLeft:'3px solid '+bc}},
+                h('div',{style:{fontSize:10,color:'#94a3b8',marginBottom:2,fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},p.name),
+                h('div',{style:{display:'flex',alignItems:'center',gap:4}},
+                  h('span',{style:{fontSize:16,fontWeight:800,color:'#facc15'}},g.sa,' ',h('span',{style:{color:'#64748b',fontSize:12}},'×'),' ',g.sb),
+                  (g.sa===g.sb&&g.who)?h('span',{style:{fontSize:9,color:'#94a3b8',marginLeft:4}},'('+(g.who==='A'?m.taName:m.tbName).slice(0,10)+')'):null,
+                  pts!==null?h('span',{style:{marginLeft:'auto',fontSize:10,fontWeight:800,color:tc,border:'1px solid '+bc,borderRadius:5,padding:'1px 4px'}},pts+'pts'):null
+                )
               );
             })
-          ),
-          h('div',{style:{display:'flex',gap:8}},
-            h('button',{
-              onClick:function(){
-                var map={};
-                RAW.forEach(function(p){map[p.name]=Number(koAdminTmp[p.name]||0);});
-                saveKoPointsOverride(m.id,map);
-                setKoAdminMatchId(null);
-                alert('Pontos salvos com sucesso! ✅');
-              },
-              style:{background:'#22c55e',border:'none',color:'#fff',borderRadius:6,padding:'7px 18px',fontSize:12,fontWeight:700,cursor:'pointer'}
-            },'💾 Salvar pontos'),
-            h('button',{
-              onClick:function(){setKoAdminMatchId(null);},
-              style:{background:'#16243e',border:'1px solid #374151',color:'#94a3b8',borderRadius:6,padding:'7px 14px',fontSize:12,cursor:'pointer'}
-            },'Cancelar'),
-            hasOverride?h('button',{
-              onClick:function(){
-                if(confirm('Apagar override e usar pontuação automática?')){
-                  if(_db)_db.ref('ko_points_override/'+m.id).remove();
-                  setKoAdminMatchId(null);
-                }
-              },
-              style:{background:'#3b0f0f',border:'1px solid #ef4444',color:'#ef4444',borderRadius:6,padding:'7px 14px',fontSize:12,cursor:'pointer'}
-            },'🗑 Limpar override'):null
           )
-        )
-      )
     );
   }
 
