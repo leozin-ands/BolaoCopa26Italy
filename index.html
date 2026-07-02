@@ -1397,19 +1397,37 @@ function BolaoApp(){
   );
 
   // ── Pontuação do mata-mata por participante (somada ao Ranking geral) ───────
+  // Um jogo é considerado encerrado para pontuar se:
+  // isFinal=true OU resultado no Firebase OU tem placar E o horário já passou
   var koPoints=useMemo(function(){
     var t={};
     RAW.forEach(function(p){t[p.name]=0;});
-    Object.keys(koResults).forEach(function(mid){
-      var real=koResults[mid];
-      if(!real||!real.isFinal)return;
+
+    function processMatch(m){
+      var real=koResults[m.id];
+      if(!real||real.sa===null||real.sa===undefined)return;
+      var isPast=!koMatchOpen(m.id,{team:m.taName||''},{team:m.tbName||''},m.date,m.time);
+      var isDone=real.isFinal||!!koResultsFromDB[m.id]||isPast;
+      if(!isDone)return;
       RAW.forEach(function(p){
-        var g=(koGuesses[mid]||{})[p.name];
+        var g=(koGuesses[m.id]||{})[p.name];
         if(g)t[p.name]+=calcPtsKnockout(real,g);
       });
+    }
+
+    R32_MATCHES.forEach(processMatch);
+    R16_PAIRS.forEach(function(m){
+      processMatch({id:m.id,taName:m.taName||('Venc. '+m.a),tbName:m.tbName||('Venc. '+m.b),date:m.date,time:m.time});
     });
+    QF_PAIRS.forEach(function(m){
+      processMatch({id:m.id,taName:m.taName||('Venc. '+m.a),tbName:m.tbName||('Venc. '+m.b),date:m.date,time:m.time});
+    });
+    SF_PAIRS.forEach(function(m){
+      processMatch({id:m.id,taName:m.taName||('Venc. '+m.a),tbName:m.tbName||('Venc. '+m.b),date:m.date,time:m.time});
+    });
+
     return t;
-  },[koResults,koGuesses]);
+  },[koResults,koGuesses,koResultsFromDB,nowTick]);
 
   var ranked=useMemo(function(){
     return Object.entries(scores).sort(function(a,b){
