@@ -336,8 +336,10 @@ function calcPtsKnockout(real,guess){
 
   return 0; // errou o classificado
 }
-var PTS_COL={8:'#fbbf24',7:'#4ade80',5:'#22c55e',4:'#3b82f6',3:'#a78bfa',2:'#f59e0b',0:'#ef4444'};
-var PTS_BG={8:'#422006',7:'#052e16',5:'#052e16',4:'#1e3a5f',3:'#2d1b69',2:'#3d2600',0:'#3b0f0f'};
+// Legenda de cores (card de resultados e mata-mata):
+// 8,7pts → verde | 5pts → azul | 4pts → amarelo | 3pts → roxo | 2pts → branco | 0pts → vermelho
+var PTS_COL={8:'#22c55e',7:'#22c55e',5:'#3b82f6',4:'#eab308',3:'#a78bfa',2:'#f1f5f9',0:'#ef4444'};
+var PTS_BG={8:'#052e16',7:'#052e16',5:'#1e3a5f',4:'#1c1500',3:'#2d1b69',2:'#1e293b',0:'#3b0f0f'};
 </script>
 
 <script>
@@ -498,6 +500,7 @@ function BolaoApp(){
   // ── Persistent score cache: accumulates ALL ESPN scores across every poll ──
   // Uses useRef so it never resets between renders; state copy triggers re-render
   var espnCacheRef=React.useRef({});
+  var persistedRef=React.useRef({}); // tracks which finished matches were already saved to Firebase
   var s_ec=useState({}); var espnScoreCache=s_ec[0],setEspnScoreCache=s_ec[1];
 
   React.useEffect(function(){
@@ -515,14 +518,21 @@ function BolaoApp(){
       var prev=espnCacheRef.current[fk];
       var next={sa:ev.homeScore,sb:ev.awayScore};
 
-      // Only update cache when score actually changes
+      // Update cache whenever score changes (live or final)
       if(!prev||prev.sa!==next.sa||prev.sb!==next.sb){
         espnCacheRef.current[fk]=next;
         changed=true;
+      }
 
-        // Immediately persist FINAL scores to Firebase so they survive page reload
-        if(ev.isFinal&&_db){
-          _db.ref('results/'+fk).set(next);
+      // Persist to Firebase when match is FINAL — once per match, even if score
+      // didn't change since last live poll (avoids score disappearing after reload)
+      if(ev.isFinal&&_db&&!persistedRef.current[fk]){
+        persistedRef.current[fk]=true;
+        _db.ref('results/'+fk).set(next);
+        // Guarantee cache is up-to-date with the definitive score
+        if(!espnCacheRef.current[fk]||espnCacheRef.current[fk].sa!==next.sa||espnCacheRef.current[fk].sb!==next.sb){
+          espnCacheRef.current[fk]=next;
+          changed=true;
         }
       }
     });
@@ -1311,7 +1321,7 @@ function BolaoApp(){
     }),
     h('div',{style:{padding:'8px 12px',background:'#16243e',borderRadius:8,fontSize:11,color:'#94a3b8',marginTop:4}},
       h('strong',{style:{color:'#facc15'}},'Legenda: '),
-      [['#fbbf24','8pts','Placar exato + classificado'],['#4ade80','7pts','Vencedor+saldo+classif. / Empate+classif.'],['#22c55e','5pts','Vencedor + classificado'],['#3b82f6','4pts','Acertou o empate'],['#a78bfa','3pts','Só o classificado'],['#ef4444','0pts','Errou']].map(function(x){
+      [['#22c55e','7-8pts','Placar/Empate + classificado'],['#3b82f6','5pts','Vencedor + classificado'],['#eab308','4pts','Acertou o empate'],['#a78bfa','3pts','Só o classificado'],['#f1f5f9','2pts','—'],['#ef4444','0pts','Errou']].map(function(x){
         return h('span',{key:x[1],style:{marginLeft:10}},h('span',{style:{display:'inline-block',width:8,height:8,borderRadius:'50%',background:x[0],marginRight:3,verticalAlign:'middle'}}),h('strong',null,x[1]),' — ',x[2]);
       })
     )
@@ -2030,7 +2040,7 @@ function BolaoApp(){
       // LEGEND + TABS
       h('div',{style:{padding:'8px 0 6px',display:'flex',flexWrap:'wrap',gap:6,alignItems:'center',justifyContent:'center',borderTop:'1px solid #16243e'}},
         h('span',{style:{fontSize:10,color:'#64748b',marginRight:2,fontWeight:600,letterSpacing:.5}},'PONTUAÇÃO:'),
-        [['#22c55e','5pts','Placar exato'],['#3b82f6','4pts','Vencedor+saldo'],['#f59e0b','2pts','Só vencedor'],['#ef4444','0pts','Errou'],['#3b82f6','+5pts','Acertou líder/vice do grupo']].map(function(leg,li){
+        [['#22c55e','5pts','Placar exato'],['#eab308','4pts','Vencedor+saldo'],['#f1f5f9','2pts','Só vencedor'],['#ef4444','0pts','Errou'],['#22c55e','+5pts','Acertou líder/vice do grupo']].map(function(leg,li){
           return h('div',{key:li,style:{display:'flex',alignItems:'center',gap:4,padding:'2px 8px',background:'#16243e',borderRadius:20,border:'1px solid #1e3050'}},
             h('span',{style:{width:7,height:7,borderRadius:'50%',background:leg[0],display:'inline-block',flexShrink:0}}),
             h('span',{style:{fontSize:10,color:leg[0],fontWeight:700}},leg[1]),
