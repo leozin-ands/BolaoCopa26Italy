@@ -1735,10 +1735,15 @@ function BolaoApp(){
           },'✅ Finalizados')
         ),
         (function(){
-          // Filtrar allKoMatches por finished ou upcoming
+          // Um jogo é considerado finalizado se:
+          // 1) koResults tem isFinal=true, OU
+          // 2) está salvo no Firebase (koResultsFromDB), OU
+          // 3) tem placar disponível E o prazo do jogo já passou (não está mais aberto)
           var filtered=allKoMatches.filter(function(m){
             var r=koResults[m.id];
-            var done=!!(r&&r.isFinal)||!!(koResultsFromDB[m.id]);
+            var hasScore=!!(r&&r.sa!==null&&r.sa!==undefined);
+            var isPastCutoff=!koMatchOpen(m.id,{team:m.taName},{team:m.tbName},m.date,m.time);
+            var done=!!(r&&r.isFinal)||!!koResultsFromDB[m.id]||(hasScore&&isPastCutoff);
             return koAllSubTab==='finished'?done:!done;
           });
           if(filtered.length===0){
