@@ -260,7 +260,7 @@ function flagImg(team,sz){
 // Keep legacy F() for any remaining uses - returns empty string now
 var FLAGS={};
 function F(t){return '';}
-var EM={'Mexico':'México','South Africa':'África do Sul','South Korea':'Coreia do Sul','Czech Republic':'República Tcheca','Czechia':'República Tcheca','Bosnia-Herzegovina':'Bósnia e Herzegovina','Bosnia and Herzegovina':'Bósnia e Herzegovina','Qatar':'Catar','Switzerland':'Suíça','Brazil':'Brasil','Morocco':'Marrocos','Scotland':'Escócia','United States':'Estados Unidos','Paraguay':'Paraguai','Australia':'Austrália','Turkey':'Turquia','Türkiye':'Turquia','Germany':'Alemanha',"Cote d'Ivoire":'Costa do Marfim',"Côte d'Ivoire":'Costa do Marfim','Ivory Coast':'Costa do Marfim','Ecuador':'Equador','Netherlands':'Holanda','Japan':'Japão','Sweden':'Suécia','Tunisia':'Tunísia','Belgium':'Bélgica','Egypt':'Egito','Iran':'Irã','New Zealand':'Nova Zelândia','Spain':'Espanha','Cape Verde':'Cabo Verde','Saudi Arabia':'Arábia Saudita','Uruguay':'Uruguai','France':'França','Senegal':'Senegal','Iraq':'Iraque','Norway':'Noruega','Austria':'Áustria','Jordan':'Jordânia','Portugal':'Portugal','DR Congo':'Rep. D. Congo','Congo DR':'Rep. D. Congo','Uzbekistan':'Uzbequistão','Colombia':'Colômbia','England':'Inglaterra','Croatia':'Croácia','Ghana':'Gana','Panama':'Panamá','Algeria':'Argélia','Haiti':'Haiti','Canada':'Canadá','Curacao':'Curaçao','Curaçao':'Curaçao','Argentina':'Argentina','Socceroos':'Austrália'};
+var EM={'Mexico':'México','South Africa':'África do Sul','South Korea':'Coreia do Sul','Czech Republic':'República Tcheca','Czechia':'República Tcheca','Bosnia-Herzegovina':'Bósnia e Herzegovina','Bosnia and Herzegovina':'Bósnia e Herzegovina','Qatar':'Catar','Switzerland':'Suíça','Brazil':'Brasil','Morocco':'Marrocos','Scotland':'Escócia','United States':'Estados Unidos','Paraguay':'Paraguai','Australia':'Austrália','Turkey':'Turquia','Türkiye':'Turquia','Germany':'Alemanha',"Cote d'Ivoire":'Costa do Marfim',"Côte d'Ivoire":'Costa do Marfim','Ivory Coast':'Costa do Marfim','Ecuador':'Equador','Netherlands':'Holanda','Japan':'Japão','Sweden':'Suécia','Tunisia':'Tunísia','Belgium':'Bélgica','Egypt':'Egito','Iran':'Irã','New Zealand':'Nova Zelândia','Spain':'Espanha','Cape Verde':'Cabo Verde','Saudi Arabia':'Arábia Saudita','Uruguay':'Uruguai','France':'França','Senegal':'Senegal','Sénégal':'Senegal','Iraq':'Iraque','Norway':'Noruega','Austria':'Áustria','Jordan':'Jordânia','Portugal':'Portugal','DR Congo':'Rep. D. Congo','Congo DR':'Rep. D. Congo','Uzbekistan':'Uzbequistão','Colombia':'Colômbia','England':'Inglaterra','Croatia':'Croácia','Ghana':'Gana','Panama':'Panamá','Algeria':'Argélia','Algérie':'Argélia','Haiti':'Haiti','Canada':'Canadá','Curacao':'Curaçao','Curaçao':'Curaçao','Argentina':'Argentina','Socceroos':'Austrália','Bosnia':'Bósnia e Herzegovina','Costa Rica':'Costa Rica','Ivory Coast':'Costa do Marfim'};
 function norm(t){return EM[t]||t;}
 // F() replaced by flagImg()
 
@@ -433,15 +433,34 @@ function useESPN(){
       // Auto-save finals to Firebase (tenta também com home/away invertidos)
       evts.forEach(function(ev){
         if(!ev.isFinal||!_db)return;
+        // Fase de grupos
         var m=MATCH_LIST.find(function(m){return m.team_a===ev.homeTeam&&m.team_b===ev.awayTeam;});
         if(m){
           _db.ref('results/'+fbkey(mkey(m))).set({sa:ev.homeScore,sb:ev.awayScore});
           return;
         }
-        // Tenta com home/away invertidos (ESPN às vezes troca a ordem)
         var mInv=MATCH_LIST.find(function(m){return m.team_a===ev.awayTeam&&m.team_b===ev.homeTeam;});
         if(mInv){
           _db.ref('results/'+fbkey(mkey(mInv))).set({sa:ev.awayScore,sb:ev.homeScore});
+          return;
+        }
+        // Mata-mata: salva em ko_results quando o jogo finaliza
+        var koM=R32_MATCHES.find(function(m){
+          return (m.taName===ev.homeTeam&&m.tbName===ev.awayTeam)||
+                 (m.taName===ev.awayTeam&&m.tbName===ev.homeTeam);
+        });
+        if(koM){
+          var swapped=koM.taName===ev.awayTeam;
+          var sa=swapped?ev.awayScore:ev.homeScore;
+          var sb=swapped?ev.homeScore:ev.awayScore;
+          var aWon=swapped?ev.awayWin:ev.homeWin;
+          var bWon=swapped?ev.homeWin:ev.awayWin;
+          _db.ref('ko_results/'+koM.id).set({
+            sa:sa,sb:sb,
+            who:(sa===sb)?(aWon?'A':bWon?'B':null):null,
+            winnerName:aWon?koM.taName:bWon?koM.tbName:null,
+            decidedBy:ev.decidedBy||'regulation'
+          });
         }
       });
     }).catch(function(e){console.warn('ESPN:',e);});
