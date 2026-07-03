@@ -1423,9 +1423,12 @@ function BolaoApp(){
       var isPast=!koMatchOpen(m.id,{team:m.taName||''},{team:m.tbName||''},m.date,m.time);
       var isDone=real.isFinal||!!koResultsFromDB[m.id]||isPast;
       if(!isDone)return;
+      // Garante taName/tbName no objeto real para que calcPtsKnockout
+      // consiga inferir o vencedor pelo placar quando winnerName vier nulo do Firebase
+      var enriched=Object.assign({taName:m.taName,tbName:m.tbName},real);
       RAW.forEach(function(p){
         var g=(koGuesses[m.id]||{})[p.name];
-        if(g)t[p.name]+=calcPtsKnockout(real,g);
+        if(g)t[p.name]+=calcPtsKnockout(enriched,g);
       });
     }
 
@@ -1566,6 +1569,8 @@ function BolaoApp(){
     var myGuesses=koGuesses[m.id]||{};
     var realKO=koResults[m.id]||null;
     var hasReal=realKO&&realKO.sa!==null&&realKO.sa!==undefined;
+    // Garante taName/tbName no objeto real para cálculo correto do bônus de classificado
+    var realForCalc=hasReal?Object.assign({taName:m.taName,tbName:m.tbName},realKO):null;
     var isStillOpen=koMatchOpen(m.id,{team:m.taName},{team:m.tbName},m.date,m.time);
 
     return h('div',{key:'ko_'+m.id,style:{background:'#1a2d52',borderRadius:12,overflow:'hidden',border:'1px solid #243356',marginBottom:14}},
@@ -1587,7 +1592,7 @@ function BolaoApp(){
         :h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(148px,1fr))',gap:1,background:'#243356'}},
             RAW.map(function(p){
               var g=myGuesses[p.name];
-              var pts=(g&&hasReal)?calcPtsKnockout(realKO,g):null;
+              var pts=(g&&hasReal)?calcPtsKnockout(realForCalc,g):null;
               var bg=pts!==null?PTS_BG[pts]:'#1a2d52';
               var bc=pts!==null?PTS_COL[pts]:'#1a2d52';
               var tc=pts!==null?PTS_COL[pts]:'#94a3b8';
