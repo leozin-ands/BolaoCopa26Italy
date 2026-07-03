@@ -91,8 +91,8 @@ var KNOWN_KO_RESULTS=[
   {id:'M73', sa:1, sb:1, who:'B', decidedBy:'penalties', winnerName:'Paraguai'},
   // Holanda 1 x 1 Marrocos (M76) — empate no tempo normal e prorrogação, Marrocos venceu nos pênaltis (3x2)
   {id:'M76', sa:1, sb:1, who:'B', decidedBy:'penalties', winnerName:'Marrocos'},
-  // ⚠️ M80 Bélgica x Senegal (01/07) — PREENCHER com o resultado correto
-  // {id:'M80', sa:?, sb:?, who:null, decidedBy:'regulation', winnerName:'???'},
+  // Bélgica 3 x 2 Senegal (M80) — vitória direta nos 90 minutos
+  {id:'M80', sa:3, sb:2, who:null, decidedBy:'regulation', winnerName:'Bélgica'},
 ];
 window.addEventListener('load',function(){
   if(!_db)return;
@@ -1192,9 +1192,17 @@ function BolaoApp(){
 
   // Janela de envio: confronto precisa ter os 2 times definidos E
   // faltar mais de 30 minutos para o horário marcado do jogo.
+  // Cutoffs customizados (sobrescreve o padrão de -30min antes do jogo)
+  // Horários no fuso de Brasília (UTC-3) — usado quando admin quer liberar palpites por mais tempo
+  var KO_CUSTOM_CUTOFFS={
+    'M85': new Date(2026,6,3,18,30) // Argentina × Cabo Verde — liberado até 18h30 de Brasília
+  };
+
   function koMatchOpen(matchId,ta,tb,dateStr,timeStr){
     if(!ta||!tb)return false; // confronto ainda não confirmado
     if(!dateStr||!timeStr)return true; // sem data definida ainda, libera
+    // Cutoff customizado sobrescreve o padrão
+    if(KO_CUSTOM_CUTOFFS[matchId])return new Date()<KO_CUSTOM_CUTOFFS[matchId];
     var parts=dateStr.split('/'); var dd=parseInt(parts[0]),mm=parseInt(parts[1]);
     var tparts=timeStr.replace('h',':').split(':'); var hh=parseInt(tparts[0]),min=tparts[1]?parseInt(tparts[1]):0;
     var year=new Date().getFullYear();
@@ -1230,7 +1238,7 @@ function BolaoApp(){
     {id:'M89',a:'M73',b:'M74',date:'04/07',time:'14h'},
     {id:'M90',a:'M75',b:'M76',date:'04/07',time:'18h'},
     {id:'M91',a:'M77',b:'M78',date:'05/07',time:'17h'},
-    {id:'M92',a:'M79',b:'M80',date:'05/07',time:'21h'},
+    {id:'M92',a:'M79',b:'M80',taName:'Estados Unidos',tbName:'Bélgica',date:'05/07',time:'21h'},
     {id:'M93',a:'M81',b:'M82',date:'06/07',time:'15h'},
     {id:'M94',a:'M83',b:'M84',date:'06/07',time:'20h'},
     {id:'M95',a:'M85',b:'M86',date:'07/07',time:'13h'},
@@ -1301,7 +1309,12 @@ function BolaoApp(){
   // usado para preencher automaticamente os times da fase seguinte
   function koWinnerName(matchId){
     var r=koResults[matchId];
-    return (r&&r.isFinal)?r.winnerName:null;
+    if(!r||r.sa===null||r.sa===undefined)return null;
+    // Usa winnerName explícito, ou infere do placar (ex: ESPN não setou isFinal mas score existe)
+    if(r.winnerName)return r.winnerName;
+    if(r.sa>r.sb)return r.taName;
+    if(r.sb>r.sa)return r.tbName;
+    return null; // empate no tempo normal → decidido nos pênaltis, não inferível sem winnerName
   }
 
   // Lista completa de TODOS os jogos do mata-mata (R32+Oitavas+Quartas+Semis),
@@ -1312,8 +1325,9 @@ function BolaoApp(){
     });
     [R16_PAIRS,QF_PAIRS,SF_PAIRS].forEach(function(arr){
       arr.forEach(function(m){
-        var ta=koWinnerName(m.a)||('Venc. '+m.a);
-        var tb=koWinnerName(m.b)||('Venc. '+m.b);
+        // Usa nome hardcoded se disponível; senão resolve pelo vencedor do confronto anterior
+        var ta=m.taName||koWinnerName(m.a)||('Venc. '+m.a);
+        var tb=m.tbName||koWinnerName(m.b)||('Venc. '+m.b);
         list.push({id:m.id,taName:ta,tbName:tb,date:m.date,time:m.time});
       });
     });
@@ -1506,7 +1520,8 @@ function BolaoApp(){
 
 
   // Calcula o cutoff (data/hora) de um jogo, dado date+time no formato "dd/mm" e "HHhMM"
-  function koCutoffDate(dateStr,timeStr){
+  function koCutoffDate(dateStr,timeStr,matchId){
+    if(matchId&&KO_CUSTOM_CUTOFFS[matchId])return KO_CUSTOM_CUTOFFS[matchId];
     var parts=dateStr.split('/'); var dd=parseInt(parts[0]),mm=parseInt(parts[1]);
     var tparts=timeStr.replace('h',':').split(':'); var hh=parseInt(tparts[0]),min=tparts[1]?parseInt(tparts[1]):0;
     var year=new Date().getFullYear();
@@ -1516,10 +1531,10 @@ function BolaoApp(){
 
   // Acha o próximo cutoff de palpite (entre todos os jogos do mata-mata ainda não vencidos)
   function nextKoCutoff(){
-    var all=R32_MATCHES.map(function(m){return koCutoffDate(m.date,m.time);})
-      .concat(R16_PAIRS.map(function(m){return koCutoffDate(m.date,m.time);}))
-      .concat(QF_PAIRS.map(function(m){return koCutoffDate(m.date,m.time);}))
-      .concat(SF_PAIRS.map(function(m){return koCutoffDate(m.date,m.time);}));
+    var all=R32_MATCHES.map(function(m){return koCutoffDate(m.date,m.time,m.id);})
+      .concat(R16_PAIRS.map(function(m){return koCutoffDate(m.date,m.time,m.id);}))
+      .concat(QF_PAIRS.map(function(m){return koCutoffDate(m.date,m.time,m.id);}))
+      .concat(SF_PAIRS.map(function(m){return koCutoffDate(m.date,m.time,m.id);}));
     var now=new Date();
     var future=all.filter(function(d){return d>now;}).sort(function(a,b){return a-b;});
     return future[0]||null;
@@ -1603,11 +1618,11 @@ function BolaoApp(){
   // Jogos do mata-mata cujo prazo já encerrou E que acontecem hoje
   var todayClosedKoMatches=useMemo(function(){
     var allKo=R32_MATCHES.concat(R16_PAIRS.map(function(m){
-        return {id:m.id,taName:'Venc. '+m.a,tbName:'Venc. '+m.b,date:m.date,time:m.time};
+        return {id:m.id,taName:m.taName||koWinnerName(m.a)||('Venc. '+m.a),tbName:m.tbName||koWinnerName(m.b)||('Venc. '+m.b),date:m.date,time:m.time};
       })).concat(QF_PAIRS.map(function(m){
-        return {id:m.id,taName:'Venc. '+m.a,tbName:'Venc. '+m.b,date:m.date,time:m.time};
+        return {id:m.id,taName:m.taName||koWinnerName(m.a)||('Venc. '+m.a),tbName:m.tbName||koWinnerName(m.b)||('Venc. '+m.b),date:m.date,time:m.time};
       })).concat(SF_PAIRS.map(function(m){
-        return {id:m.id,taName:'Venc. '+m.a,tbName:'Venc. '+m.b,date:m.date,time:m.time};
+        return {id:m.id,taName:m.taName||koWinnerName(m.a)||('Venc. '+m.a),tbName:m.tbName||koWinnerName(m.b)||('Venc. '+m.b),date:m.date,time:m.time};
       }));
     return allKo.filter(function(m){
       if(m.date!==todayStr)return false;
