@@ -93,6 +93,8 @@ var KNOWN_KO_RESULTS=[
   {id:'M76', sa:1, sb:1, who:'B', decidedBy:'penalties', winnerName:'Marrocos'},
   // Bélgica 3 x 2 Senegal (M80) — vitória direta nos 90 minutos
   {id:'M80', sa:3, sb:2, who:null, decidedBy:'regulation', winnerName:'Bélgica'},
+  // Austrália 1 x 1 Egito (M86) — empate no tempo normal, Egito venceu nos pênaltis
+  {id:'M86', sa:1, sb:1, who:'B', decidedBy:'penalties', winnerName:'Egito'},
 ];
 window.addEventListener('load',function(){
   if(!_db)return;
@@ -461,10 +463,18 @@ function useESPN(){
           var sb=swapped?ev.homeScore:ev.awayScore;
           var aWon=swapped?ev.awayWin:ev.homeWin;
           var bWon=swapped?ev.homeWin:ev.awayWin;
+          // Quando ESPN não seta winner flag, usa placar dos pênaltis para inferir o vencedor
+          if(!aWon&&!bWon&&ev.decidedBy==='penalties'){
+            var soA=swapped?ev.awaySO:ev.homeSO;
+            var soB=swapped?ev.homeSO:ev.awaySO;
+            if(soA!==null&&soB!==null){aWon=soA>soB;bWon=soB>soA;}
+          }
+          // Fallback final: placar normal (só para vitórias diretas)
+          var inferWin=aWon?koM.taName:bWon?koM.tbName:(sa>sb?koM.taName:sb>sa?koM.tbName:null);
           _db.ref('ko_results/'+koM.id).set({
             sa:sa,sb:sb,
             who:(sa===sb)?(aWon?'A':bWon?'B':null):null,
-            winnerName:aWon?koM.taName:bWon?koM.tbName:null,
+            winnerName:inferWin,
             decidedBy:ev.decidedBy||'regulation'
           });
         }
@@ -1289,7 +1299,12 @@ function BolaoApp(){
         var sb=swapped?ev.homeScore:ev.awayScore;
         var aWon=swapped?ev.awayWin:ev.homeWin;
         var bWon=swapped?ev.homeWin:ev.awayWin;
-        // Inferir vencedor do placar quando ESPN não retorna winner flag (acontece em alguns jogos)
+        // Para pênaltis: quando ESPN não seta winner flag, usa placar dos pênaltis (homeSO/awaySO)
+        if(!aWon&&!bWon&&ev.decidedBy==='penalties'){
+          var soA=swapped?ev.awaySO:ev.homeSO;
+          var soB=swapped?ev.homeSO:ev.awaySO;
+          if(soA!==null&&soA!==undefined&&soB!==null&&soB!==undefined){aWon=soA>soB;bWon=soB>soA;}
+        }
         var espnWinner=ev.isFinal?(aWon?m.taName:bWon?m.tbName:(sa>sb?m.taName:sb>sa?m.tbName:null)):null;
         map[m.id]={
           sa:sa,sb:sb,
