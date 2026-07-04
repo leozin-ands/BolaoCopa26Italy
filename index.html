@@ -288,24 +288,40 @@ function calcPts(real,guess){
   return 2;
 }
 
+// ── Tabela de pontuação por fase do mata-mata ────────────────────────────────
+// R32: lógica clássica (flag null → usa código interno)
+// R16/QF/SF/F: lógica flat conforme regras do bolão
+var ROUND_SCORING={
+  R16:{exact:8, drawOrDiff:6, winner:4, classifier:4},
+  QF: {exact:10,drawOrDiff:8, winner:4, classifier:4},
+  SF: {exact:12,drawOrDiff:10,winner:5, classifier:5},
+  F:  {exact:15,drawOrDiff:12,winner:6, classifier:6}
+};
+function getMatchRound(matchId){
+  var n=parseInt((matchId||'').replace(/[^0-9]/g,''));
+  if(n>=73&&n<=88)return 'R32';
+  if(n>=89&&n<=96)return 'R16';
+  if(n>=97&&n<=100)return 'QF';
+  if(n>=101&&n<=102)return 'SF';
+  if(n===103)return 'F';
+  return 'R32';
+}
+
 // ── Mata-mata: régua de pontos base (5/4/2/0) + bônus de +3 para quem acertar o classificado ──
 // Bônus de +3pts para TODOS que acertarem quem avança, independente de como palpitaram
 // (real / guess: {sa,sb,who}) — 'who' = 'A' ou 'B', só usado quando sa===sb (palpite empate)
-function calcPtsKnockout(real,guess){
+// matchId opcional — quando passado, aplica regras da fase correta (R16/QF/SF/F)
+function calcPtsKnockout(real,guess,matchId){
   if(!real||!guess)return 0;
   var ra=real.sa,rb=real.sb,ga=guess.sa,gb=guess.sb;
   if(ra===null||rb===null||ga===null||gb===null)return 0;
 
   var guessIsDraw=ga===gb;
-  var realWasDraw=ra===rb; // jogo real empatou no tempo normal (foi a prorrogação/pênaltis)
-
+  var realWasDraw=ra===rb;
   // Inferir winnerName do placar quando ESPN não retorna a flag winner explicitamente
-  // Ex: 3x2 → ta ganhou; se winnerName vier null/undefined, calculamos pelo placar
   var inferredWinner=real.winnerName||(ra>rb?real.taName:rb>ra?real.tbName:null);
 
-  // Quem o participante escolheu como classificado:
-  // • palpite empate → usa o campo 'who' explícito
-  // • palpite vitória direta → o time que o participante achou que ganharia
+  // Quem o participante escolheu como classificado
   var guessedAdvancerName;
   if(guessIsDraw&&guess.who){
     guessedAdvancerName=guess.who==='A'?real.taName:real.tbName;
@@ -313,41 +329,53 @@ function calcPtsKnockout(real,guess){
     guessedAdvancerName=ga>gb?real.taName:real.tbName;
   }
   var guessedRightAdvancer=!!(guessedAdvancerName&&inferredWinner&&guessedAdvancerName===inferredWinner);
-  var classBonus=guessedRightAdvancer?3:0; // bônus por acertar o classificado
 
-  // ── 1) Placar exato (em qualquer cenário) ───────────────────────────────────
-  if(ra===ga&&rb===gb){
-    return 5+classBonus; // 8 se acertou também o classificado, 5 caso contrário
-  }
+  var round=getMatchRound(matchId);
+  var sc=ROUND_SCORING[round]; // null para R32 → lógica clássica
 
-  // ── 2) Participante palpitou EMPATE (placar diferente do real) ─────────────
-  if(guessIsDraw){
-    var pts=0;
-    if(realWasDraw)pts+=4; // acertou que haveria empate no tempo normal
-    pts+=classBonus;       // +3 se acertou quem avança (vale mesmo sem acertar o empate)
-    if(pts>0)return pts;
-    // Nem acertou o empate nem o classificado — cai na régua abaixo
-  }
-
-  // ── 3) Acertou o vencedor final (mesmo que o jogo tenha sido decidido na prorrogação/pênaltis) ──
-  var guessWinnerSide=ga>gb?'A':gb>ga?'B':null; // null = palpite foi empate (já tratado acima)
-  var guessedWinnerName=guessWinnerSide==='A'?real.taName:guessWinnerSide==='B'?real.tbName:null;
-  if(guessedWinnerName&&inferredWinner&&guessedWinnerName===inferredWinner){
-    if(!realWasDraw){
-      // Jogo real decidido dentro dos 90 minutos
-      if(Math.abs(ra-rb)===Math.abs(ga-gb))return 4+classBonus; // acertou vencedor + saldo + classificado
-      return 2+classBonus; // acertou vencedor + classificado
+  // ── R32: lógica clássica aditiva (placar + bônus de classificado) ──────────
+  if(!sc){
+    var classBonus=guessedRightAdvancer?3:0;
+    if(ra===ga&&rb===gb)return 5+classBonus;
+    if(guessIsDraw){
+      var pts=0;
+      if(realWasDraw)pts+=4;
+      pts+=classBonus;
+      if(pts>0)return pts;
     }
-    // Jogo real foi decidido na prorrogação/pênaltis: só conta o bônus do classificado
-    return classBonus;
+    var guessWinnerSide=ga>gb?'A':gb>ga?'B':null;
+    var guessedWinnerName=guessWinnerSide==='A'?real.taName:guessWinnerSide==='B'?real.tbName:null;
+    if(guessedWinnerName&&inferredWinner&&guessedWinnerName===inferredWinner){
+      if(!realWasDraw){
+        if(Math.abs(ra-rb)===Math.abs(ga-gb))return 4+classBonus;
+        return 2+classBonus;
+      }
+      return classBonus;
+    }
+    return 0;
   }
 
-  return 0; // errou o classificado
+  // ── R16/QF/SF/Final: lógica flat por categoria ────────────────────────────
+  // 1. Placar exato
+  if(ra===ga&&rb===gb){
+    // Empate no tempo normal: só é "placar exato" completo se acertou quem vai nos pênaltis
+    if(realWasDraw) return guessedRightAdvancer?sc.exact:sc.drawOrDiff;
+    return sc.exact; // vitória direta: placar exato sempre
+  }
+  // 2. Empate (acertou que seria empate no tempo normal) OU Saldo (mesmo saldo + vencedor certo)
+  if(guessIsDraw&&realWasDraw) return sc.drawOrDiff;
+  if(!guessIsDraw&&!realWasDraw&&guessedRightAdvancer&&Math.abs(ga-gb)===Math.abs(ra-rb))return sc.drawOrDiff;
+  // 3. Somente vencedor (vitória direta, time certo, saldo errado) OU Apenas classificado
+  if(guessedRightAdvancer){
+    if(!guessIsDraw&&!realWasDraw)return sc.winner; // somente vencedor
+    return sc.classifier; // apenas classificado (método diferente do esperado)
+  }
+  return 0;
 }
 // Legenda de cores (card de resultados e mata-mata):
-// 8,7pts → verde | 5pts → azul | 4pts → amarelo | 3pts → roxo | 2pts → branco | 0pts → vermelho
-var PTS_COL={8:'#22c55e',7:'#22c55e',5:'#3b82f6',4:'#eab308',3:'#a78bfa',2:'#f1f5f9',0:'#ef4444'};
-var PTS_BG={8:'#052e16',7:'#052e16',5:'#1e3a5f',4:'#1c1500',3:'#2d1b69',2:'#1e293b',0:'#3b0f0f'};
+// 15pts→ouro | 12pts→âmbar | 10pts→laranja | 8,7pts→verde | 6pts→ciano | 5pts→azul | 4pts→amarelo | 3pts→roxo | 2pts→branco | 0pts→vermelho
+var PTS_COL={15:'#fbbf24',12:'#f59e0b',10:'#fb923c',8:'#22c55e',7:'#22c55e',6:'#06b6d4',5:'#3b82f6',4:'#eab308',3:'#a78bfa',2:'#f1f5f9',0:'#ef4444'};
+var PTS_BG= {15:'#3d2800',12:'#2d1a00',10:'#2d1200',8:'#052e16',7:'#052e16',6:'#0c2133',5:'#1e3a5f',4:'#1c1500',3:'#2d1b69',2:'#1e293b',0:'#3b0f0f'};
 </script>
 
 <script>
@@ -1411,7 +1439,7 @@ function BolaoApp(){
     }),
     h('div',{style:{padding:'8px 12px',background:'#16243e',borderRadius:8,fontSize:11,color:'#94a3b8',marginTop:4}},
       h('strong',{style:{color:'#facc15'}},'Legenda: '),
-      [['#22c55e','7-8pts','Placar/Empate + classificado'],['#3b82f6','5pts','Vencedor + classificado'],['#eab308','4pts','Acertou o empate'],['#a78bfa','3pts','Só o classificado'],['#f1f5f9','2pts','—'],['#ef4444','0pts','Errou']].map(function(x){
+      [['#22c55e','7-8pts','R32: Placar/Empate + classificado'],['#06b6d4','6pts','Oitavas: Empate ou saldo'],['#3b82f6','5pts','R32: Vencedor + classificado'],['#eab308','4pts','Vencedor / Classificado'],['#a78bfa','3pts','R32: Só classificado'],['#ef4444','0pts','Errou']].map(function(x){
         return h('span',{key:x[1],style:{marginLeft:10}},h('span',{style:{display:'inline-block',width:8,height:8,borderRadius:'50%',background:x[0],marginRight:3,verticalAlign:'middle'}}),h('strong',null,x[1]),' — ',x[2]);
       })
     )
@@ -1443,7 +1471,7 @@ function BolaoApp(){
       var enriched=Object.assign({taName:m.taName,tbName:m.tbName},real);
       RAW.forEach(function(p){
         var g=(koGuesses[m.id]||{})[p.name];
-        if(g)t[p.name]+=calcPtsKnockout(enriched,g);
+        if(g)t[p.name]+=calcPtsKnockout(enriched,g,m.id);
       });
     }
 
@@ -1607,7 +1635,7 @@ function BolaoApp(){
         :h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(148px,1fr))',gap:1,background:'#243356'}},
             RAW.map(function(p){
               var g=myGuesses[p.name];
-              var pts=(g&&hasReal)?calcPtsKnockout(realForCalc,g):null;
+              var pts=(g&&hasReal)?calcPtsKnockout(realForCalc,g,m.id):null;
               var bg=pts!==null?PTS_BG[pts]:'#1a2d52';
               var bc=pts!==null?PTS_COL[pts]:'#1a2d52';
               var tc=pts!==null?PTS_COL[pts]:'#94a3b8';
