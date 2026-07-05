@@ -577,44 +577,77 @@ function BolaoApp(){
     if(!espnEvents.length)return;
     var changed=false;
 
-    espnEvents.forEach(function(ev){
-      // Accept live, half-time AND finished scores
-      if(!ev.isFinal&&!ev.isLive&&!ev.isHalf)return;
-
-      // Tenta achar a partida na ordem normal; se não, tenta invertida
-      var m=MATCH_LIST.find(function(m){return m.team_a===ev.homeTeam&&m.team_b===ev.awayTeam;});
-      var scoreA=ev.homeScore,scoreB=ev.awayScore;
-      if(!m){
-        m=MATCH_LIST.find(function(m){return m.team_a===ev.awayTeam&&m.team_b===ev.homeTeam;});
-        if(m){scoreA=ev.awayScore;scoreB=ev.homeScore;} // inverte os placares também
-      }
-      if(!m)return;
-
+    // Função reutilizável para processar um jogo (qualquer fase) do espnEvents
+    function processEv(m){
+      var ev=espnEvents.find(function(e){
+        return (e.homeTeam===m.team_a&&e.awayTeam===m.team_b)||
+               (e.homeTeam===m.team_b&&e.awayTeam===m.team_a);
+      });
+      if(!ev||(!ev.isFinal&&!ev.isLive&&!ev.isHalf))return;
       var fk=fbkey(mkey(m));
       var prev=espnCacheRef.current[fk];
-      var next={sa:scoreA,sb:scoreB};
-
-      // Update cache whenever score changes (live or final)
-      if(!prev||prev.sa!==next.sa||prev.sb!==next.sb){
-        espnCacheRef.current[fk]=next;
-        changed=true;
-      }
-
-      // Persist to Firebase when match is FINAL — once per match, even if score
-      // didn't change since last live poll (avoids score disappearing after reload)
+      var next={sa:ev.homeTeam===m.team_a?ev.homeScore:ev.awayScore,
+                sb:ev.homeTeam===m.team_a?ev.awayScore:ev.homeScore};
+      if(!prev||prev.sa!==next.sa||prev.sb!==next.sb){espnCacheRef.current[fk]=next;changed=true;}
       if(ev.isFinal&&_db&&!persistedRef.current[fk]){
         persistedRef.current[fk]=true;
         _db.ref('results/'+fk).set(next);
-        // Guarantee cache is up-to-date with the definitive score
         if(!espnCacheRef.current[fk]||espnCacheRef.current[fk].sa!==next.sa||espnCacheRef.current[fk].sb!==next.sb){
-          espnCacheRef.current[fk]=next;
-          changed=true;
+          espnCacheRef.current[fk]=next;changed=true;
+        }
+      }
+    }
+
+    espnEvents.forEach(function(ev){
+      // Fase de grupos: usa o cache de placares
+      if(!ev.isFinal&&!ev.isLive&&!ev.isHalf)return;
+      var m=MATCH_LIST.find(function(m){return m.team_a===ev.homeTeam&&m.team_b===ev.awayTeam;})
+           ||MATCH_LIST.find(function(m){return m.team_a===ev.awayTeam&&m.team_b===ev.homeTeam;});
+      if(!m)return;
+      var swapped=m.team_a===ev.awayTeam;
+      var fk=fbkey(mkey(m));
+      var prev=espnCacheRef.current[fk];
+      var next={sa:swapped?ev.awayScore:ev.homeScore,sb:swapped?ev.homeScore:ev.awayScore};
+      if(!prev||prev.sa!==next.sa||prev.sb!==next.sb){espnCacheRef.current[fk]=next;changed=true;}
+      if(ev.isFinal&&_db&&!persistedRef.current[fk]){
+        persistedRef.current[fk]=true;
+        _db.ref('results/'+fk).set(next);
+        if(!espnCacheRef.current[fk]||espnCacheRef.current[fk].sa!==next.sa||espnCacheRef.current[fk].sb!==next.sb){
+          espnCacheRef.current[fk]=next;changed=true;
         }
       }
     });
 
-    // Trigger React re-render (scores / ranking / palpites all update)
-    if(changed) setEspnScoreCache(Object.assign({},espnCacheRef.current));
+    // Mata-mata (R16/QF/SF): auto-save para ko_results quando finalizar
+    if(_db){
+      var allKoRounds=R16_PAIRS.concat(QF_PAIRS).concat(SF_PAIRS);
+      allKoRounds.forEach(function(m){
+        if(!m.taName||!m.tbName)return;
+        var ev=espnEvents.find(function(e){
+          return (e.homeTeam===m.taName&&e.awayTeam===m.tbName)||
+                 (e.homeTeam===m.tbName&&e.awayTeam===m.taName);
+        });
+        if(!ev||!ev.isFinal)return;
+        var swapped=ev.homeTeam===m.tbName;
+        var sa=swapped?ev.awayScore:ev.homeScore;
+        var sb=swapped?ev.homeScore:ev.awayScore;
+        var aWon=swapped?ev.awayWin:ev.homeWin;
+        var bWon=swapped?ev.homeWin:ev.awayWin;
+        if(!aWon&&!bWon&&ev.decidedBy==='penalties'){
+          var soA=swapped?ev.awaySO:ev.homeSO,soB=swapped?ev.homeSO:ev.awaySO;
+          if(soA!=null&&soB!=null){aWon=soA>soB;bWon=soB>soA;}
+        }
+        var inferWin=aWon?m.taName:bWon?m.tbName:(sa>sb?m.taName:sb>sa?m.tbName:null);
+        if(!persistedRef.current['ko_'+m.id]){
+          persistedRef.current['ko_'+m.id]=true;
+          _db.ref('ko_results/'+m.id).set({sa:sa,sb:sb,
+            who:(sa===sb)?(aWon?'A':bWon?'B':null):null,
+            winnerName:inferWin,decidedBy:ev.decidedBy||'regulation'});
+        }
+      });
+    }
+
+    if(changed)setEspnScoreCache(Object.assign({},espnCacheRef.current));
   },[espnEvents]);
 
   // Merge: Firebase (persistent) overrides nothing; ESPN cache adds live+final scores
@@ -1299,24 +1332,18 @@ function BolaoApp(){
   //  2) avançar automaticamente o vencedor para a fase seguinte
   var koResults=useMemo(function(){
     var map={};
-    R32_MATCHES.forEach(function(m){
-      // 1) Base: resultado já confirmado/salvo no Firebase (ex: KNOWN_KO_RESULTS)
+
+    // Extrai o resultado de um jogo ESPN para o mapa — funciona para qualquer fase
+    function applyMatch(m){
+      // 1) Base: resultado confirmado no Firebase (KNOWN_KO_RESULTS ou auto-save)
       var fromDB=koResultsFromDB[m.id];
       if(fromDB){
-        // Inferir winnerName do placar quando não foi salvo explicitamente
         var dbWinner=fromDB.winnerName||(fromDB.sa>fromDB.sb?m.taName:fromDB.sb>fromDB.sa?m.tbName:null);
-        map[m.id]={
-          sa:fromDB.sa,sb:fromDB.sb,who:fromDB.who||null,
-          winnerName:dbWinner,
-          taName:m.taName,tbName:m.tbName,
-          decidedBy:fromDB.decidedBy||'regulation',
-          isLive:false,isFinal:true
-        };
+        map[m.id]={sa:fromDB.sa,sb:fromDB.sb,who:fromDB.who||null,winnerName:dbWinner,
+          taName:m.taName,tbName:m.tbName,decidedBy:fromDB.decidedBy||'regulation',
+          isLive:false,isFinal:true};
       }
-      // 2) ESPN sobrepõe quando tiver o jogo — mas só quando o estado dela for
-      //    "melhor" que o que já temos: ao vivo (sempre atualiza) ou final
-      //    (substitui só se o que tínhamos não era final, ou se confirma o mesmo).
-      //    Isso evita que um ESPN ainda não-final apague um resultado já confirmado.
+      // 2) ESPN: sobrepõe quando ao vivo ou finalizado (ou quando não há dado no Firebase)
       var ev=espnEvents.find(function(e){
         return (e.homeTeam===m.taName&&e.awayTeam===m.tbName)||
                (e.homeTeam===m.tbName&&e.awayTeam===m.taName);
@@ -1327,24 +1354,27 @@ function BolaoApp(){
         var sb=swapped?ev.homeScore:ev.awayScore;
         var aWon=swapped?ev.awayWin:ev.homeWin;
         var bWon=swapped?ev.homeWin:ev.awayWin;
-        // Para pênaltis: quando ESPN não seta winner flag, usa placar dos pênaltis (homeSO/awaySO)
+        // Pênaltis: usa placar dos pênaltis quando winner flag não vem setada
         if(!aWon&&!bWon&&ev.decidedBy==='penalties'){
           var soA=swapped?ev.awaySO:ev.homeSO;
           var soB=swapped?ev.homeSO:ev.awaySO;
-          if(soA!==null&&soA!==undefined&&soB!==null&&soB!==undefined){aWon=soA>soB;bWon=soB>soA;}
+          if(soA!=null&&soB!=null){aWon=soA>soB;bWon=soB>soA;}
         }
         var espnWinner=ev.isFinal?(aWon?m.taName:bWon?m.tbName:(sa>sb?m.taName:sb>sa?m.tbName:null)):null;
-        map[m.id]={
-          sa:sa,sb:sb,
-          who:(ev.isFinal&&sa===sb)?(aWon?'A':bWon?'B':null):null,
-          winnerName:espnWinner,
-          taName:m.taName,tbName:m.tbName,
-          decidedBy:ev.decidedBy,
-          isLive:ev.isLive||ev.isHalf,
-          isFinal:ev.isFinal
-        };
+        map[m.id]={sa:sa,sb:sb,who:(ev.isFinal&&sa===sb)?(aWon?'A':bWon?'B':null):null,
+          winnerName:espnWinner,taName:m.taName,tbName:m.tbName,decidedBy:ev.decidedBy,
+          isLive:ev.isLive||ev.isHalf,isFinal:ev.isFinal};
       }
+    }
+
+    // Processa todas as fases
+    R32_MATCHES.forEach(applyMatch);
+    R16_PAIRS.forEach(function(m){
+      if(m.taName&&m.tbName) applyMatch(m); // só processa quando os times já são conhecidos
     });
+    QF_PAIRS.forEach(function(m){if(m.taName&&m.tbName)applyMatch(m);});
+    SF_PAIRS.forEach(function(m){if(m.taName&&m.tbName)applyMatch(m);});
+
     return map;
   },[espnEvents,koResultsFromDB]);
 
