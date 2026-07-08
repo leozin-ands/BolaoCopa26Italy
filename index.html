@@ -372,9 +372,9 @@ function calcPtsKnockout(real,guess,matchId){
     return 0;
   }
 
-  // ── R16/QF/SF/Final: lógica flat + bônus aditivo de classificado nas Oitavas ──
-  // Nas Oitavas (R16): acertar o classificado vale +4pts em cima de qualquer pontuação de placar
-  var classBonus=(round==='R16'&&guessedRightAdvancer)?sc.classifier:0;
+  // ── R16/QF/SF/Final: lógica flat + bônus aditivo de classificado em todas as fases ──
+  // Acertar o classificado vale +sc.classifier pts em cima de qualquer pontuação de placar
+  var classBonus=(round!=='R32'&&guessedRightAdvancer)?sc.classifier:0;
 
   // 1. Placar exato
   if(ra===ga&&rb===gb){
@@ -393,9 +393,8 @@ function calcPtsKnockout(real,guess,matchId){
   return 0;
 }
 // Legenda de cores (card de resultados e mata-mata):
-// 15pts→ouro | 12pts→âmbar | 10pts→laranja | 8,7pts→verde | 6pts→ciano | 5pts→azul | 4pts→amarelo | 3pts→roxo | 2pts→branco | 0pts→vermelho
-var PTS_COL={15:'#fbbf24',12:'#f59e0b',10:'#fb923c',8:'#22c55e',7:'#22c55e',6:'#06b6d4',5:'#3b82f6',4:'#eab308',3:'#a78bfa',2:'#f1f5f9',0:'#ef4444'};
-var PTS_BG= {15:'#3d2800',12:'#2d1a00',10:'#2d1200',8:'#052e16',7:'#052e16',6:'#0c2133',5:'#1e3a5f',4:'#1c1500',3:'#2d1b69',2:'#1e293b',0:'#3b0f0f'};
+var PTS_COL={21:'#fde047',18:'#fbbf24',17:'#f59e0b',15:'#fbbf24',14:'#fb923c',12:'#f59e0b',10:'#fb923c',8:'#22c55e',7:'#22c55e',6:'#06b6d4',5:'#3b82f6',4:'#eab308',3:'#a78bfa',2:'#f1f5f9',0:'#ef4444'};
+var PTS_BG= {21:'#3d2000',18:'#3d2800',17:'#2d1a00',15:'#3d2800',14:'#2d1200',12:'#2d1a00',10:'#2d1200',8:'#052e16',7:'#052e16',6:'#0c2133',5:'#1e3a5f',4:'#1c1500',3:'#2d1b69',2:'#1e293b',0:'#3b0f0f'};
 </script>
 
 <script>
@@ -1132,6 +1131,7 @@ function BolaoApp(){
   // Sub-abas do Mata-Mata
   var s_kst=useState('today');    var koSubTab=s_kst[0],setKoSubTab=s_kst[1]; // 'today' | 'all'
   var s_kst2=useState('upcoming'); var koAllSubTab=s_kst2[0],setKoAllSubTab=s_kst2[1]; // 'upcoming' | 'finished'
+  var s_kkh=useState(false); var showKoHelp=s_kkh[0],setShowKoHelp=s_kkh[1]; // balão de regras
 
   // Matches for "Palpites do Dia"
   var todayGuessMatches=useMemo(function(){
@@ -1822,54 +1822,66 @@ function BolaoApp(){
 
     // SEÇÃO: Mata-Mata — com sub-abas "Palpites do Dia" e "Todos"
     gPhase==='knockout'?h('div',null,
-      // Sub-tab buttons
-      h('div',{style:{display:'flex',gap:0,marginBottom:16,background:'#16243e',borderRadius:10,padding:4,width:'fit-content'}},
-        h('button',{
-          onClick:function(){setKoSubTab('today');},
-          style:{padding:'8px 20px',borderRadius:8,border:'none',cursor:'pointer',fontFamily:'inherit',
-            fontWeight:700,fontSize:13,transition:'all .2s',
-            background:koSubTab==='today'?'#facc15':'transparent',
-            color:koSubTab==='today'?'#0d1b34':'#94a3b8'}
-        },'📅 Palpites do Dia'),
-        h('button',{
-          onClick:function(){setKoSubTab('all');},
-          style:{padding:'8px 20px',borderRadius:8,border:'none',cursor:'pointer',fontFamily:'inherit',
-            fontWeight:700,fontSize:13,transition:'all .2s',
-            background:koSubTab==='all'?'#facc15':'transparent',
-            color:koSubTab==='all'?'#0d1b34':'#94a3b8'}
-        },'🗂 Todos')
+
+      // ── Cabeçalho com sub-tabs e ícone de ajuda ─────────────────────────
+      h('div',{style:{display:'flex',alignItems:'center',gap:10,marginBottom:16,flexWrap:'wrap'}},
+        h('div',{style:{display:'flex',gap:0,background:'#16243e',borderRadius:10,padding:4}},
+          h('button',{onClick:function(){setKoSubTab('today');},style:{padding:'8px 20px',borderRadius:8,border:'none',cursor:'pointer',fontFamily:'inherit',fontWeight:700,fontSize:13,transition:'all .2s',background:koSubTab==='today'?'#facc15':'transparent',color:koSubTab==='today'?'#0d1b34':'#94a3b8'}},'📅 Palpites do Dia'),
+          h('button',{onClick:function(){setKoSubTab('all');},style:{padding:'8px 20px',borderRadius:8,border:'none',cursor:'pointer',fontFamily:'inherit',fontWeight:700,fontSize:13,transition:'all .2s',background:koSubTab==='all'?'#facc15':'transparent',color:koSubTab==='all'?'#0d1b34':'#94a3b8'}},'🗂 Todos')
+        ),
+        h('div',{style:{position:'relative'}},
+          h('button',{onClick:function(){setShowKoHelp(function(v){return !v;});},title:'Ver regras de pontuação',
+            style:{width:32,height:32,borderRadius:'50%',border:'2px solid #3b82f6',background:showKoHelp?'#3b82f6':'#16243e',color:showKoHelp?'#fff':'#3b82f6',fontSize:15,fontWeight:900,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}},'?'),
+          showKoHelp?h('div',{style:{position:'absolute',top:38,left:0,zIndex:300,background:'#0d1b34',border:'1px solid #3b82f6',borderRadius:12,padding:'16px 18px',width:370,boxShadow:'0 8px 40px #000c'}},
+            h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}},
+              h('span',{style:{fontWeight:800,color:'#facc15',fontSize:13}},'📊 Regras de Pontuação — Mata-Mata'),
+              h('button',{onClick:function(){setShowKoHelp(false);},style:{background:'none',border:'none',color:'#64748b',fontSize:18,cursor:'pointer',lineHeight:1}},'×')
+            ),
+            [
+              {fase:'16 Avos (R32)',  exact:'8pts',     dd:'7pts',     win:'5pts', cls:'3pts'},
+              {fase:'Oitavas (R16)',  exact:'8+4=12pts',dd:'6+4=10pts',win:'4+4=8pts',cls:'4pts'},
+              {fase:'Quartas (QF)',   exact:'10+4=14pts',dd:'8+4=12pts',win:'4+4=8pts',cls:'4pts'},
+              {fase:'Semifinal (SF)',  exact:'12+5=17pts',dd:'10+5=15pts',win:'5+5=10pts',cls:'5pts'},
+              {fase:'Final',          exact:'15+6=21pts',dd:'12+6=18pts',win:'6+6=12pts',cls:'6pts'},
+            ].map(function(r,i){
+              return h('div',{key:i,style:{marginBottom:10}},
+                h('div',{style:{fontWeight:700,color:'#a78bfa',fontSize:11,marginBottom:5,borderBottom:'1px solid #1e3a5f',paddingBottom:3}},r.fase),
+                h('div',{style:{display:'grid',gridTemplateColumns:'auto 1fr',gap:'3px 12px',fontSize:11}},
+                  h('span',{style:{color:'#94a3b8'}},'🎯 Placar exato + classificado'),h('span',{style:{color:'#fde047',fontWeight:700}},r.exact),
+                  h('span',{style:{color:'#94a3b8'}},'↔️ Empate/saldo + classificado'), h('span',{style:{color:'#fb923c',fontWeight:700}},r.dd),
+                  h('span',{style:{color:'#94a3b8'}},'✅ Só vencedor + classificado'),  h('span',{style:{color:'#22c55e',fontWeight:700}},r.win),
+                  h('span',{style:{color:'#94a3b8'}},'🏆 Só o classificado'),           h('span',{style:{color:'#eab308',fontWeight:700}},r.cls),
+                  h('span',{style:{color:'#94a3b8'}},'❌ Errou'),                        h('span',{style:{color:'#ef4444',fontWeight:700}},'0pts')
+                )
+              );
+            }),
+            h('div',{style:{marginTop:8,padding:'6px 8px',background:'#16243e',borderRadius:6,color:'#64748b',fontSize:10}},
+              '* R32: sistema aditivo — base do placar + 3pts de bônus do classificado')
+          ):null
+        )
       ),
 
-      // SUB-TAB: Palpites do Dia (Mata-Mata)
+      // SUB-TAB: Palpites do Dia
       koSubTab==='today'?h('div',null,
         todayClosedKoMatches.length===0
           ?h('div',{style:{textAlign:'center',color:'#64748b',padding:'40px 0',fontSize:14}},'Nenhum jogo do mata-mata hoje 📅')
           :todayClosedKoMatches.map(function(m){return KnockoutGuessCard(m);})
       ):null,
 
-      // SUB-TAB: Todos (Mata-Mata) com filtro A Realizar / Finalizados
+      // SUB-TAB: Todos — com filtro A Realizar / Finalizados por fase
       koSubTab==='all'?h('div',null,
         h('div',{style:{display:'flex',gap:0,marginBottom:14,background:'#16243e',borderRadius:10,padding:4,width:'fit-content'}},
-          h('button',{
-            onClick:function(){setKoAllSubTab('upcoming');},
-            style:{padding:'7px 16px',borderRadius:8,border:'none',cursor:'pointer',fontFamily:'inherit',
-              fontWeight:700,fontSize:12,transition:'all .2s',
-              background:koAllSubTab==='upcoming'?'#facc15':'transparent',
-              color:koAllSubTab==='upcoming'?'#0d1b34':'#94a3b8'}
-          },'⏳ A Realizar'),
-          h('button',{
-            onClick:function(){setKoAllSubTab('finished');},
-            style:{padding:'7px 16px',borderRadius:8,border:'none',cursor:'pointer',fontFamily:'inherit',
-              fontWeight:700,fontSize:12,transition:'all .2s',
-              background:koAllSubTab==='finished'?'#facc15':'transparent',
-              color:koAllSubTab==='finished'?'#0d1b34':'#94a3b8'}
-          },'✅ Finalizados')
+          h('button',{onClick:function(){setKoAllSubTab('upcoming');},style:{padding:'7px 16px',borderRadius:8,border:'none',cursor:'pointer',fontFamily:'inherit',fontWeight:700,fontSize:12,transition:'all .2s',background:koAllSubTab==='upcoming'?'#facc15':'transparent',color:koAllSubTab==='upcoming'?'#0d1b34':'#94a3b8'}},'⏳ A Realizar'),
+          h('button',{onClick:function(){setKoAllSubTab('finished');},style:{padding:'7px 16px',borderRadius:8,border:'none',cursor:'pointer',fontFamily:'inherit',fontWeight:700,fontSize:12,transition:'all .2s',background:koAllSubTab==='finished'?'#facc15':'transparent',color:koAllSubTab==='finished'?'#0d1b34':'#94a3b8'}},'✅ Finalizados')
         ),
         (function(){
-          // Um jogo é considerado finalizado se:
-          // 1) koResults tem isFinal=true, OU
-          // 2) está salvo no Firebase (koResultsFromDB), OU
-          // 3) tem placar disponível E o prazo do jogo já passou (não está mais aberto)
+          var phasesDef=[
+            {label:'⚽ 16 Avos de Final', ids:R32_MATCHES.map(function(m){return m.id;})},
+            {label:'🏆 Oitavas de Final',  ids:R16_PAIRS.map(function(m){return m.id;})},
+            {label:'🏆 Quartas de Final',  ids:QF_PAIRS.map(function(m){return m.id;})},
+            {label:'🏆 Semifinal',         ids:SF_PAIRS.map(function(m){return m.id;})},
+            {label:'🏆 Final',             ids:['M103']},
+          ];
           var filtered=allKoMatches.filter(function(m){
             var r=koResults[m.id];
             var hasScore=!!(r&&r.sa!==null&&r.sa!==undefined);
@@ -1881,17 +1893,22 @@ function BolaoApp(){
             return h('div',{style:{textAlign:'center',color:'#64748b',padding:'40px 0',fontSize:14}},
               koAllSubTab==='upcoming'?'Nenhum jogo a realizar 🗓':'Nenhum jogo finalizado ainda ✅');
           }
-          // Agrupar por data
-          var byDate={};
-          filtered.forEach(function(m){if(!byDate[m.date])byDate[m.date]=[];byDate[m.date].push(m);});
-          return Object.entries(byDate).map(function(entry){
-            var date=entry[0],matches=entry[1];
-            return h('div',{key:date,style:{marginBottom:20}},
-              h('div',{style:{fontSize:11,fontWeight:700,color:'#facc15',textTransform:'uppercase',
-                letterSpacing:2,marginBottom:8,paddingBottom:5,borderBottom:'1px solid #243356'}},'📅 '+date),
-              matches.map(function(m){return KnockoutGuessCard(m);})
-            );
+          var rendered=[];
+          phasesDef.forEach(function(phase){
+            var pm=filtered.filter(function(m){return phase.ids.indexOf(m.id)>=0;});
+            if(!pm.length)return;
+            rendered.push(h('div',{key:phase.label,style:{marginBottom:28}},
+              h('div',{style:{fontSize:12,fontWeight:800,color:'#facc15',textTransform:'uppercase',
+                letterSpacing:2,marginBottom:10,paddingBottom:6,
+                borderBottom:'2px solid #243356',display:'flex',alignItems:'center',gap:8}},
+                phase.label,
+                h('span',{style:{fontSize:10,fontWeight:400,color:'#64748b',textTransform:'none',letterSpacing:0}},
+                  pm.length+' jogo'+(pm.length>1?'s':''))
+              ),
+              pm.map(function(m){return KnockoutGuessCard(m);})
+            ));
           });
+          return rendered.length?rendered:h('div',{style:{textAlign:'center',color:'#64748b',padding:'40px 0'}},'—');
         })()
       ):null
     ):null
