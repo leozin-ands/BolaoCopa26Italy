@@ -357,20 +357,23 @@ function calcPtsKnockout(real,guess,matchId){
     return 0;
   }
 
-  // ── R16/QF/SF/Final: lógica flat por categoria ────────────────────────────
+  // ── R16/QF/SF/Final: lógica flat + bônus aditivo de classificado nas Oitavas ──
+  // Nas Oitavas (R16): acertar o classificado vale +4pts em cima de qualquer pontuação de placar
+  var classBonus=(round==='R16'&&guessedRightAdvancer)?sc.classifier:0;
+
   // 1. Placar exato
   if(ra===ga&&rb===gb){
-    // Empate no tempo normal: só é "placar exato" completo se acertou quem vai nos pênaltis
-    if(realWasDraw) return guessedRightAdvancer?sc.exact:sc.drawOrDiff;
-    return sc.exact; // vitória direta: placar exato sempre
+    // Empate no tempo normal: precisa acertar os pênaltis para "placar exato" completo
+    if(realWasDraw) return guessedRightAdvancer?sc.exact+classBonus:sc.drawOrDiff;
+    return sc.exact+classBonus; // vitória direta: classificado = vencedor, bônus sempre
   }
-  // 2. Empate (acertou que seria empate no tempo normal) OU Saldo (mesmo saldo + vencedor certo)
-  if(guessIsDraw&&realWasDraw) return sc.drawOrDiff;
-  if(!guessIsDraw&&!realWasDraw&&guessedRightAdvancer&&Math.abs(ga-gb)===Math.abs(ra-rb))return sc.drawOrDiff;
+  // 2. Empate (acertou que seria empate) OU Saldo (mesmo saldo + vencedor certo)
+  if(guessIsDraw&&realWasDraw) return sc.drawOrDiff+classBonus;
+  if(!guessIsDraw&&!realWasDraw&&guessedRightAdvancer&&Math.abs(ga-gb)===Math.abs(ra-rb))return sc.drawOrDiff+classBonus;
   // 3. Somente vencedor (vitória direta, time certo, saldo errado) OU Apenas classificado
   if(guessedRightAdvancer){
-    if(!guessIsDraw&&!realWasDraw)return sc.winner; // somente vencedor
-    return sc.classifier; // apenas classificado (método diferente do esperado)
+    if(!guessIsDraw&&!realWasDraw)return sc.winner+classBonus; // somente vencedor + bônus
+    return sc.classifier; // apenas classificado (método diferente)
   }
   return 0;
 }
