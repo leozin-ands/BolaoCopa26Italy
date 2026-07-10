@@ -1393,15 +1393,20 @@ function BolaoApp(){
       }
     }
 
-    // Processa todas as fases — resolve taName/tbName via koWinnerName quando não hardcoded
+    // Processa todas as fases — resolve taName/tbName via mapa local (evita circular com koWinnerName)
+    function resolveWinner(matchId){
+      var r=map[matchId]||koResultsFromDB[matchId];
+      if(!r||r.sa===null||r.sa===undefined)return null;
+      return r.winnerName||(r.sa>r.sb?r.taName:r.sb>r.sa?r.tbName:null)||null;
+    }
     R32_MATCHES.forEach(applyMatch);
     R16_PAIRS.forEach(function(m){
       if(m.taName&&m.tbName)applyMatch(m);
     });
     [QF_PAIRS,SF_PAIRS].forEach(function(arr){
       arr.forEach(function(m){
-        var ta=m.taName||koWinnerName(m.a);
-        var tb=m.tbName||koWinnerName(m.b);
+        var ta=m.taName||resolveWinner(m.a);
+        var tb=m.tbName||resolveWinner(m.b);
         if(ta&&tb)applyMatch({id:m.id,taName:ta,tbName:tb,date:m.date,time:m.time});
       });
     });
