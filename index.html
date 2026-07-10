@@ -112,6 +112,9 @@ var KNOWN_KO_RESULTS=[
   {id:'M95', sa:3, sb:2, who:null, decidedBy:'regulation', winnerName:'Argentina'},
   // Suíça 0 x 0 Colômbia (M96) — empate no tempo normal, Suíça venceu nos pênaltis
   {id:'M96', sa:0, sb:0, who:'A', decidedBy:'penalties', winnerName:'Suíça'},
+  // ── Quartas de Final ──────────────────────────────────────────────────────
+  // França 2 x 0 Marrocos (M97) — vitória direta nos 90 minutos
+  {id:'M97', sa:2, sb:0, who:null, decidedBy:'regulation', winnerName:'França'},
 ];
 window.addEventListener('load',function(){
   if(!_db)return;
@@ -641,13 +644,16 @@ function BolaoApp(){
     if(_db){
       var allKoRounds=R16_PAIRS.concat(QF_PAIRS).concat(SF_PAIRS);
       allKoRounds.forEach(function(m){
-        if(!m.taName||!m.tbName)return;
+        // Resolve taName/tbName: hardcoded ou via koWinnerName dos pais
+        var ta=m.taName||koWinnerName(m.a);
+        var tb=m.tbName||koWinnerName(m.b);
+        if(!ta||!tb)return;
         var ev=espnEvents.find(function(e){
-          return (e.homeTeam===m.taName&&e.awayTeam===m.tbName)||
-                 (e.homeTeam===m.tbName&&e.awayTeam===m.taName);
+          return (e.homeTeam===ta&&e.awayTeam===tb)||
+                 (e.homeTeam===tb&&e.awayTeam===ta);
         });
         if(!ev||!ev.isFinal)return;
-        var swapped=ev.homeTeam===m.tbName;
+        var swapped=ev.homeTeam===tb;
         var sa=swapped?ev.awayScore:ev.homeScore;
         var sb=swapped?ev.homeScore:ev.awayScore;
         var aWon=swapped?ev.awayWin:ev.homeWin;
@@ -656,7 +662,7 @@ function BolaoApp(){
           var soA=swapped?ev.awaySO:ev.homeSO,soB=swapped?ev.homeSO:ev.awaySO;
           if(soA!=null&&soB!=null){aWon=soA>soB;bWon=soB>soA;}
         }
-        var inferWin=aWon?m.taName:bWon?m.tbName:(sa>sb?m.taName:sb>sa?m.tbName:null);
+        var inferWin=aWon?ta:bWon?tb:(sa>sb?ta:sb>sa?tb:null);
         if(!persistedRef.current['ko_'+m.id]){
           persistedRef.current['ko_'+m.id]=true;
           _db.ref('ko_results/'+m.id).set({sa:sa,sb:sb,
@@ -1336,10 +1342,10 @@ function BolaoApp(){
     {id:'M96',a:'M87',b:'M88',taName:'Suíça',      tbName:'Colômbia',    date:'07/07',time:'17h'}
   ];
   var QF_PAIRS=[
-    {id:'M97',a:'M89',b:'M90',date:'09/07',time:'17h'},
-    {id:'M98',a:'M91',b:'M92',date:'10/07',time:'16h'},
-    {id:'M99',a:'M93',b:'M94',date:'11/07',time:'18h'},
-    {id:'M100',a:'M95',b:'M96',date:'11/07',time:'22h'}
+    {id:'M97', a:'M89',b:'M90',taName:'França',    tbName:'Marrocos',  date:'09/07',time:'17h'},
+    {id:'M98', a:'M91',b:'M92',taName:'Espanha',   tbName:'Bélgica',   date:'10/07',time:'16h'},
+    {id:'M99', a:'M93',b:'M94',taName:'Noruega',   tbName:'Inglaterra',date:'11/07',time:'18h'},
+    {id:'M100',a:'M95',b:'M96',taName:'Argentina', tbName:'Suíça',     date:'11/07',time:'22h'}
   ];
   var SF_PAIRS=[
     {id:'M101',a:'M97',b:'M98',date:'14/07',time:'16h'},
@@ -1387,13 +1393,18 @@ function BolaoApp(){
       }
     }
 
-    // Processa todas as fases
+    // Processa todas as fases — resolve taName/tbName via koWinnerName quando não hardcoded
     R32_MATCHES.forEach(applyMatch);
     R16_PAIRS.forEach(function(m){
-      if(m.taName&&m.tbName) applyMatch(m); // só processa quando os times já são conhecidos
+      if(m.taName&&m.tbName)applyMatch(m);
     });
-    QF_PAIRS.forEach(function(m){if(m.taName&&m.tbName)applyMatch(m);});
-    SF_PAIRS.forEach(function(m){if(m.taName&&m.tbName)applyMatch(m);});
+    [QF_PAIRS,SF_PAIRS].forEach(function(arr){
+      arr.forEach(function(m){
+        var ta=m.taName||koWinnerName(m.a);
+        var tb=m.tbName||koWinnerName(m.b);
+        if(ta&&tb)applyMatch({id:m.id,taName:ta,tbName:tb,date:m.date,time:m.time});
+      });
+    });
 
     return map;
   },[espnEvents,koResultsFromDB]);
@@ -1527,13 +1538,15 @@ function BolaoApp(){
 
     R32_MATCHES.forEach(processMatch);
     R16_PAIRS.forEach(function(m){
-      processMatch({id:m.id,taName:m.taName||('Venc. '+m.a),tbName:m.tbName||('Venc. '+m.b),date:m.date,time:m.time});
+      processMatch({id:m.id,taName:m.taName,tbName:m.tbName,date:m.date,time:m.time});
     });
     QF_PAIRS.forEach(function(m){
-      processMatch({id:m.id,taName:m.taName||('Venc. '+m.a),tbName:m.tbName||('Venc. '+m.b),date:m.date,time:m.time});
+      var ta=m.taName||koWinnerName(m.a),tb=m.tbName||koWinnerName(m.b);
+      if(ta&&tb)processMatch({id:m.id,taName:ta,tbName:tb,date:m.date,time:m.time});
     });
     SF_PAIRS.forEach(function(m){
-      processMatch({id:m.id,taName:m.taName||('Venc. '+m.a),tbName:m.tbName||('Venc. '+m.b),date:m.date,time:m.time});
+      var ta=m.taName||koWinnerName(m.a),tb=m.tbName||koWinnerName(m.b);
+      if(ta&&tb)processMatch({id:m.id,taName:ta,tbName:tb,date:m.date,time:m.time});
     });
 
     return t;
