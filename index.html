@@ -127,14 +127,7 @@ window.addEventListener('load',function(){
       }
     });
   });
-  // Limpeza única: remove todos os palpites de mata-mata já enviados
-  // (v2 — nova rodada de limpeza solicitada; controlado por flag própria no Firebase)
-  _db.ref('ko_guesses_wiped_v2').once('value',function(snap){
-    if(!snap.val()){
-      _db.ref('ko_guesses').set(null);
-      _db.ref('ko_guesses_wiped_v2').set(true);
-    }
-  });
+  // REMOVIDO: limpeza de ko_guesses (era one-time migration, não deve mais rodar)
   // Seed dos resultados confirmados do mata-mata (fallback se a ESPN não foi
   // capturada a tempo por nenhum navegador aberto)
   KNOWN_KO_RESULTS.forEach(function(r){
