@@ -96,26 +96,121 @@ var KNOWN_KO_RESULTS=[
   // Austrália 1 x 1 Egito (M86) — empate no tempo normal, Egito venceu nos pênaltis
   {id:'M86', sa:1, sb:1, who:'B', decidedBy:'penalties', winnerName:'Egito'},
   // ── Oitavas de Final ─────────────────────────────────────────────────────
-  // Paraguai 0 x 1 França (M89) — vitória direta nos 90 minutos
   {id:'M89', sa:0, sb:1, who:null, decidedBy:'regulation', winnerName:'França'},
-  // Canadá 0 x 3 Marrocos (M90) — vitória direta nos 90 minutos
   {id:'M90', sa:0, sb:3, who:null, decidedBy:'regulation', winnerName:'Marrocos'},
-  // Portugal 0 x 1 Espanha (M91) — vitória direta nos 90 minutos
   {id:'M91', sa:0, sb:1, who:null, decidedBy:'regulation', winnerName:'Espanha'},
-  // Estados Unidos 1 x 4 Bélgica (M92) — vitória direta nos 90 minutos
   {id:'M92', sa:1, sb:4, who:null, decidedBy:'regulation', winnerName:'Bélgica'},
-  // Brasil 1 x 2 Noruega (M93) — vitória direta nos 90 minutos
   {id:'M93', sa:1, sb:2, who:null, decidedBy:'regulation', winnerName:'Noruega'},
-  // México 2 x 3 Inglaterra (M94) — vitória direta nos 90 minutos
   {id:'M94', sa:2, sb:3, who:null, decidedBy:'regulation', winnerName:'Inglaterra'},
-  // Argentina 3 x 2 Egito (M95) — vitória direta nos 90 minutos
   {id:'M95', sa:3, sb:2, who:null, decidedBy:'regulation', winnerName:'Argentina'},
-  // Suíça 0 x 0 Colômbia (M96) — empate no tempo normal, Suíça venceu nos pênaltis
   {id:'M96', sa:0, sb:0, who:'A', decidedBy:'penalties', winnerName:'Suíça'},
   // ── Quartas de Final ──────────────────────────────────────────────────────
-  // França 2 x 0 Marrocos (M97) — vitória direta nos 90 minutos
   {id:'M97', sa:2, sb:0, who:null, decidedBy:'regulation', winnerName:'França'},
 ];
+
+// Palpites do mata-mata recuperados das capturas de tela da conversa
+// ta=A (primeiro time), tb=B (segundo time). who='A' ou 'B' apenas em empates (pênaltis)
+var KNOWN_KO_GUESSES={
+  // M80: Bélgica(A) × Senegal(B) — resultado real: 3×2 Bélgica
+  'M80':[
+    {n:'Victor Dardengo (Vitão)', sa:1,sb:1,who:'A'},
+    {n:'Léo Lucki',              sa:2,sb:1,who:null},
+    {n:'Ands',                   sa:1,sb:2,who:null},
+    {n:'Adriano (Leão)',         sa:2,sb:2,who:'B'},
+    {n:'Rodrigo',                sa:2,sb:1,who:null},
+    {n:'Alvim',                  sa:2,sb:2,who:'A'},
+    {n:'Hallifer',               sa:1,sb:1,who:'A'},
+    {n:'Biscoito',               sa:0,sb:0,who:'A'},
+    {n:'Rick',                   sa:1,sb:1,who:'A'},
+    {n:'Kaynan',                 sa:2,sb:2,who:'A'},
+    {n:'Cezinha',                sa:1,sb:1,who:'B'},
+    {n:'Gabriel Lozano',         sa:1,sb:2,who:null},
+    {n:'Bento',                  sa:1,sb:1,who:'A'},
+    {n:'Pedro Canaves',          sa:2,sb:1,who:null},
+    {n:'Luiz Balestero',         sa:1,sb:1,who:'B'},
+    {n:'João Macieski',          sa:0,sb:1,who:null},
+    {n:'Carlinhos',              sa:2,sb:1,who:null},
+    {n:'Cavalo',                 sa:1,sb:2,who:null},
+    {n:'Malta',                  sa:1,sb:1,who:'B'},
+    {n:'Léo Kawa',               sa:1,sb:1,who:'B'},
+    {n:'Tayadão',                sa:1,sb:2,who:null},
+  ],
+  // M86: Austrália(A) × Egito(B) — resultado real: 1×1 pens Egito
+  'M86':[
+    {n:'Victor Dardengo (Vitão)', sa:0,sb:1,who:null},
+    {n:'Léo Lucki',              sa:1,sb:2,who:null},
+    {n:'Ands',                   sa:2,sb:3,who:null},
+    {n:'Adriano (Leão)',         sa:1,sb:2,who:null},
+    {n:'Rodrigo',                sa:1,sb:2,who:null},
+    {n:'Alvim',                  sa:1,sb:2,who:null},
+    {n:'Hallifer',               sa:1,sb:1,who:'B'},
+    {n:'Biscoito',               sa:1,sb:1,who:'B'},
+    {n:'Rick',                   sa:1,sb:1,who:'A'},
+    {n:'Kaynan',                 sa:1,sb:2,who:null},
+    {n:'Cezinha',                sa:1,sb:1,who:'B'},
+    {n:'Gabriel Lozano',         sa:1,sb:1,who:'B'},
+    {n:'Pedro Canaves',          sa:1,sb:1,who:'B'},
+    {n:'Luiz Balestero',         sa:1,sb:3,who:null},
+    {n:'João Macieski',          sa:0,sb:2,who:null},
+    {n:'Carlinhos',              sa:0,sb:1,who:null},
+    {n:'Cavalo',                 sa:0,sb:1,who:null},
+    {n:'Malta',                  sa:0,sb:2,who:null},
+    {n:'Léo Kawa',               sa:1,sb:2,who:null},
+    {n:'Tayadão',                sa:2,sb:0,who:null},
+  ],
+  // M89: Paraguai(A) × França(B) — resultado real: 0×1 França
+  'M89':[
+    {n:'Victor Dardengo (Vitão)', sa:0,sb:2,who:null},
+    {n:'Léo Lucki',              sa:0,sb:3,who:null},
+    {n:'Ands',                   sa:1,sb:3,who:null},
+    {n:'Adriano (Leão)',         sa:1,sb:2,who:null},
+    {n:'Alvim',                  sa:0,sb:2,who:null},
+    {n:'Hallifer',               sa:1,sb:2,who:null},
+    {n:'Biscoito',               sa:0,sb:2,who:null},
+    {n:'Rick',                   sa:1,sb:1,who:'A'},
+    {n:'Kaynan',                 sa:1,sb:3,who:null},
+    {n:'Cezinha',                sa:1,sb:3,who:null},
+    {n:'Gabriel Lozano',         sa:0,sb:3,who:null},
+    {n:'Bento',                  sa:3,sb:0,who:null},
+    {n:'Luiz Tabith',            sa:1,sb:3,who:null},
+    {n:'Pedro Canaves',          sa:2,sb:1,who:null},
+    {n:'Luiz Balestero',         sa:0,sb:3,who:null},
+    {n:'João Macieski',          sa:0,sb:3,who:null},
+    {n:'Carlinhos',              sa:0,sb:3,who:null},
+    {n:'Cavalo',                 sa:0,sb:3,who:null},
+    {n:'Malta',                  sa:0,sb:3,who:null},
+    {n:'Léo Kawa',               sa:1,sb:4,who:null},
+    {n:'Tayadão',                sa:2,sb:2,who:'B'},
+  ],
+  // M90: Canadá(A) × Marrocos(B) — resultado real: 0×3 Marrocos
+  'M90':[
+    {n:'Victor Dardengo (Vitão)', sa:1,sb:2,who:null},
+    {n:'Léo Lucki',              sa:1,sb:2,who:null},
+    {n:'Ands',                   sa:1,sb:2,who:null},
+    {n:'Adriano (Leão)',         sa:1,sb:2,who:null},
+    {n:'Rodrigo',                sa:1,sb:3,who:null},
+    {n:'Alvim',                  sa:1,sb:2,who:null},
+    {n:'Hallifer',               sa:1,sb:2,who:null},
+    {n:'Biscoito',               sa:0,sb:0,who:'A'},
+    {n:'Rick',                   sa:2,sb:2,who:'A'},
+    {n:'Kaynan',                 sa:0,sb:2,who:null},
+    {n:'Cezinha',                sa:1,sb:2,who:null},
+    {n:'Gabriel Lozano',         sa:1,sb:2,who:null},
+    {n:'Luiz Tabith',            sa:1,sb:2,who:null},
+    {n:'Pedro Canaves',          sa:1,sb:2,who:null},
+    {n:'Luiz Balestero',         sa:1,sb:1,who:'B'},
+    {n:'João Macieski',          sa:0,sb:2,who:null},
+    {n:'Carlinhos',              sa:0,sb:2,who:null},
+    {n:'Malta',                  sa:0,sb:2,who:null},
+    {n:'Léo Kawa',               sa:0,sb:2,who:null},
+    {n:'Tayadão',                sa:2,sb:2,who:'B'},
+  ],
+  // M95: Argentina(A) × Egito(B) — resultado real: 3×2 Argentina
+  // (palpites parciais — apenas Carlinhos confirmado pela conversa)
+  'M95':[
+    {n:'Carlinhos', sa:2,sb:1,who:null},
+  ],
+};
 window.addEventListener('load',function(){
   if(!_db)return;
   KNOWN_RESULTS.forEach(function(r){
@@ -128,6 +223,19 @@ window.addEventListener('load',function(){
     });
   });
   // REMOVIDO: limpeza de ko_guesses (era one-time migration, não deve mais rodar)
+  // Restaura palpites do mata-mata conhecidos se o Firebase estiver vazio
+  _db.ref('ko_guesses').once('value',function(snap){
+    var existing=snap.val()||{};
+    Object.keys(KNOWN_KO_GUESSES).forEach(function(matchId){
+      if(existing[matchId])return; // já existem palpites para esse jogo — não sobrescreve
+      var guesses={};
+      KNOWN_KO_GUESSES[matchId].forEach(function(g){
+        var key=g.n.replace(/[\.#\$\[\]\/]/g,'_');
+        guesses[key]={sa:g.sa,sb:g.sb,who:g.who};
+      });
+      _db.ref('ko_guesses/'+matchId).set(guesses);
+    });
+  });
   // Seed dos resultados confirmados do mata-mata (fallback se a ESPN não foi
   // capturada a tempo por nenhum navegador aberto)
   KNOWN_KO_RESULTS.forEach(function(r){
