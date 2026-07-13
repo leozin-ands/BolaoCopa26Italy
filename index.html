@@ -2666,7 +2666,8 @@ function BolaoApp(){
       function MatchCard(id,ta,tb,labelA,labelB,date,time){
         var isOpen=koMatchOpen(id,ta,tb,date,time);
         var isConfirmed=!!(ta&&tb);
-        var myGuesses=koGuesses[id]||{};
+        // Conta palpites considerando tanto Firebase quanto hardcoded (merged)
+        var myGuesses=Object.assign({},koGuessesDefault[id]||{},koGuesses[id]||{});
         var guessCount=Object.keys(myGuesses).length;
         return h('div',{key:id,ref:function(el){if(el)bracketCardRefs.current[id]=el;},style:{background:'#1a2d52',borderRadius:8,border:'1px solid '+(isOpen?'#facc15':'#243356'),overflow:'hidden',width:170,flexShrink:0}},
           h('div',{style:{fontSize:8,color:'#64748b',padding:'3px 8px',background:'#16243e',display:'flex',justifyContent:'space-between',alignItems:'center'}},
@@ -2690,7 +2691,9 @@ function BolaoApp(){
             }
           },
             isOpen?'🔓 Palpitar':isConfirmed?'🔒 Palpites encerrados':'🔒 Aguardando confronto',
-            isConfirmed?h('span',{style:{marginLeft:4,color:'#4a6090',fontWeight:400}},'('+guessCount+'/'+RAW.length+')'):null
+            isConfirmed?h('span',{style:{marginLeft:4,color:isOpen?'#92693a':'#4a6090',fontWeight:400}},
+              '('+guessCount+'/'+RAW.length+')'
+            ):null
           ),
         );
       }
