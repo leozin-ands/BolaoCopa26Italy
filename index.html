@@ -1901,19 +1901,11 @@ function BolaoApp(){
   useEffect(function(){
     if(!koPickMatch||!koSelectedName||!koAuthed)return;
     var a=koGuessA,b=koGuessB;
-    if(a===''||b===''||isNaN(parseInt(a))||isNaN(parseInt(b)))return;
+    if(a===''||b===''||isNaN(parseInt(a))||isNaN(parseInt(b))){setKoSaveStatus('idle');return;}
     var isDraw=parseInt(a)===parseInt(b);
-    if(isDraw&&!koGuessWho)return; // empate: aguarda seleção de quem avança
-    // Verifica se o jogo ainda está aberto
-    if(!koMatchOpen(koPickMatch.id,{team:koPickMatch.ta&&koPickMatch.ta.team},{team:koPickMatch.tb&&koPickMatch.tb.team},koPickMatch.date,koPickMatch.time))return;
-    setKoSaveStatus('saving');
-    var timer=setTimeout(function(){
-      saveKoGuess(koPickMatch.id,koSelectedName,parseInt(a),parseInt(b),koGuessWho||null);
-      setKoSaveStatus('saved');
-      // Fecha o modal automaticamente após 1.5s
-      setTimeout(function(){setKoPickMatch(null);},1500);
-    },600); // 600ms debounce para evitar saves enquanto o usuário ainda digita
-    return function(){clearTimeout(timer);};
+    if(isDraw&&!koGuessWho){setKoSaveStatus('idle');return;}
+    // Palpite completo — pronto para confirmar
+    setKoSaveStatus('ready');
   },[koGuessA,koGuessB,koGuessWho,koSelectedName,koAuthed]);
   var s_kog=useState({}); var koGuesses=s_kog[0],setKoGuesses=s_kog[1]; // palpites do Firebase
 
@@ -2889,6 +2881,29 @@ function BolaoApp(){
           },'Entrar')
         )
       ):
+      koSaveStatus==='saved'?
+      // ── Tela pós-save: lista quem já palpitou ───────────────────────────
+      h('div',null,
+        h('div',{style:{background:'#052e16',border:'1px solid #22c55e',borderRadius:8,padding:'10px 12px',marginBottom:14,fontSize:12,color:'#86efac',textAlign:'center',fontWeight:700}},
+          '✅ Palpite de '+koSelectedName+' salvo!'
+        ),
+        h('div',{style:{fontSize:11,fontWeight:700,color:'#94a3b8',marginBottom:8,textTransform:'uppercase',letterSpacing:1}},'Situação dos palpites'),
+        h('div',{style:{maxHeight:220,overflowY:'auto',display:'flex',flexDirection:'column',gap:4}},
+          RAW.map(function(p){
+            var existing=Object.assign({},koGuessesDefault[koPickMatch.id]||{},koGuesses[koPickMatch.id]||{});
+            var g=existing[p.name];
+            return h('div',{key:p.name,style:{display:'flex',alignItems:'center',gap:8,padding:'5px 8px',borderRadius:6,background:g?'#0a2010':'#1a2d52'}},
+              h('span',{style:{fontSize:12}},g?'✅':'○'),
+              h('span',{style:{fontSize:11,flex:1,color:g?'#86efac':'#64748b'}},p.name),
+              g?h('span',{style:{fontSize:11,color:'#facc15',fontWeight:700}},g.sa+' × '+g.sb+(g.sa===g.sb&&g.who?' ('+(g.who==='A'?(koPickMatch.ta&&koPickMatch.ta.team):(koPickMatch.tb&&koPickMatch.tb.team))+'  pens)':'')):
+                h('span',{style:{fontSize:10,color:'#374151'}},'não palpitou')
+            );
+          })
+        ),
+        h('button',{onClick:function(){setKoPickMatch(null);},style:{width:'100%',marginTop:12,padding:'10px',background:'#243356',border:'1px solid #3a5490',borderRadius:8,color:'#94a3b8',fontWeight:600,cursor:'pointer',fontSize:13,fontFamily:'inherit'}},'Fechar')
+      ):
+
+      // ── Formulário de palpite ───────────────────────────────────────────
       h('div',null,
         h('div',{style:{fontSize:12,color:'#94a3b8',marginBottom:10}},'Palpite de ',h('strong',{style:{color:'#facc15'}},koSelectedName)),
         h('div',{style:{display:'flex',alignItems:'center',gap:10,marginBottom:12,justifyContent:'center'}},
@@ -2903,21 +2918,41 @@ function BolaoApp(){
         (koGuessA!==''&&koGuessB!==''&&parseInt(koGuessA)===parseInt(koGuessB))?h('div',{style:{marginBottom:12}},
           h('div',{style:{fontSize:11,color:'#94a3b8',marginBottom:6,textAlign:'center'}},'Empate — quem avança nos pênaltis?'),
           h('div',{style:{display:'flex',gap:8}},
-            h('button',{onClick:function(){setKoGuessWho('A');},style:{flex:1,padding:'8px',borderRadius:8,border:'1px solid '+(koGuessWho==='A'?'#facc15':'#3a5490'),background:koGuessWho==='A'?'#3d2f00':'#16243e',color:koGuessWho==='A'?'#facc15':'#94a3b8',fontWeight:700,fontSize:12,cursor:'pointer',fontFamily:'inherit'}},koPickMatch.ta&&koPickMatch.ta.team),
-            h('button',{onClick:function(){setKoGuessWho('B');},style:{flex:1,padding:'8px',borderRadius:8,border:'1px solid '+(koGuessWho==='B'?'#facc15':'#3a5490'),background:koGuessWho==='B'?'#3d2f00':'#16243e',color:koGuessWho==='B'?'#facc15':'#94a3b8',fontWeight:700,fontSize:12,cursor:'pointer',fontFamily:'inherit'}},koPickMatch.tb&&koPickMatch.tb.team)
+            h('button',{onClick:function(){setKoGuessWho('A');setKoSaveStatus('idle');},style:{flex:1,padding:'8px',borderRadius:8,border:'1px solid '+(koGuessWho==='A'?'#facc15':'#3a5490'),background:koGuessWho==='A'?'#3d2f00':'#16243e',color:koGuessWho==='A'?'#facc15':'#94a3b8',fontWeight:700,fontSize:12,cursor:'pointer',fontFamily:'inherit'}},koPickMatch.ta&&koPickMatch.ta.team),
+            h('button',{onClick:function(){setKoGuessWho('B');setKoSaveStatus('idle');},style:{flex:1,padding:'8px',borderRadius:8,border:'1px solid '+(koGuessWho==='B'?'#facc15':'#3a5490'),background:koGuessWho==='B'?'#3d2f00':'#16243e',color:koGuessWho==='B'?'#facc15':'#94a3b8',fontWeight:700,fontSize:12,cursor:'pointer',fontFamily:'inherit'}},koPickMatch.tb&&koPickMatch.tb.team)
           )
         ):null,
-        // Status do auto-save
-        koSaveStatus==='saving'?h('div',{style:{textAlign:'center',color:'#94a3b8',fontSize:12,marginTop:12,display:'flex',alignItems:'center',justifyContent:'center',gap:6}},
-          h('span',{style:{animation:'spin 1s linear infinite',display:'inline-block'}},'⏳'),' Salvando...'
+
+        // ── Confirmação ──────────────────────────────────────────────────
+        koSaveStatus==='ready'?h('div',{style:{marginTop:14,background:'#1c2e10',border:'1px solid #4ade80',borderRadius:10,padding:'12px'}},
+          h('div',{style:{textAlign:'center',fontSize:12,color:'#86efac',fontWeight:700,marginBottom:8}},'Confirmar palpite?'),
+          h('div',{style:{textAlign:'center',fontSize:22,fontWeight:800,color:'#facc15',marginBottom:6}},
+            koGuessA+' × '+koGuessB,
+            (parseInt(koGuessA)===parseInt(koGuessB)&&koGuessWho)?
+              h('div',{style:{fontSize:11,color:'#94a3b8',marginTop:4,fontWeight:400}},
+                'Pênaltis: '+(koGuessWho==='A'?(koPickMatch.ta&&koPickMatch.ta.team):(koPickMatch.tb&&koPickMatch.tb.team))+' avança')
+            :null
+          ),
+          h('div',{style:{display:'flex',gap:8}},
+            h('button',{onClick:function(){setKoSaveStatus('idle');},style:{flex:1,padding:'9px',background:'#243356',border:'none',borderRadius:8,color:'#94a3b8',fontWeight:600,cursor:'pointer',fontSize:13,fontFamily:'inherit'}},'✏️ Editar'),
+            h('button',{
+              onClick:function(){
+                setKoSaveStatus('saving');
+                saveKoGuess(koPickMatch.id,koSelectedName,parseInt(koGuessA),parseInt(koGuessB),koGuessWho||null);
+                setTimeout(function(){setKoSaveStatus('saved');},400);
+              },
+              style:{flex:1,padding:'9px',background:'#22c55e',border:'none',borderRadius:8,color:'#052e16',fontWeight:800,cursor:'pointer',fontSize:13,fontFamily:'inherit'}
+            },'✅ Confirmar')
+          )
         ):
-        koSaveStatus==='saved'?h('div',{style:{textAlign:'center',color:'#22c55e',fontSize:13,fontWeight:700,marginTop:12}},
-          '✅ Palpite salvo! Fechando...'
-        ):
-        h('div',{style:{textAlign:'center',color:'#64748b',fontSize:11,marginTop:12}},
-          '💾 Salvo automaticamente ao completar'
-        ),
-        h('button',{onClick:function(){setKoPickMatch(null);},style:{width:'100%',marginTop:10,padding:'8px',background:'#16243e',border:'1px solid #3a5490',borderRadius:8,color:'#94a3b8',fontWeight:600,cursor:'pointer',fontSize:12,fontFamily:'inherit'}},'Fechar')
+        koSaveStatus==='saving'?h('div',{style:{textAlign:'center',color:'#94a3b8',fontSize:12,marginTop:12}},'⏳ Salvando...'):
+        h('div',{style:{display:'flex',gap:8,marginTop:14}},
+          h('button',{onClick:function(){setKoPickMatch(null);},style:{flex:1,padding:'9px',background:'#243356',border:'none',borderRadius:8,color:'#94a3b8',fontWeight:600,cursor:'pointer',fontSize:13,fontFamily:'inherit'}},'Cancelar'),
+          h('button',{
+            disabled:koSaveStatus!=='ready',
+            style:{flex:1,padding:'9px',background:'#3a3f4a',border:'none',borderRadius:8,color:'#64748b',fontWeight:800,cursor:'not-allowed',fontSize:13,fontFamily:'inherit'}
+          },'Preencha o placar')
+        )
       )
     )
   ):null;
