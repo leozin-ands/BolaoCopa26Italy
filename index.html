@@ -733,15 +733,18 @@ var KNOWN_KO_GUESSES={
     {n:'Tayadão', sa:3,sb:1,who:'B'},
     {n:'Victor Dardengo (Vitão)', sa:2,sb:0,who:null},
   ],
-  'M101':[
-    {n:'Gabriel Lozano', sa:1,sb:0,who:null},
-    {n:'Luiz Balestero', sa:1,sb:2,who:null},
-    {n:'Tayadão', sa:3,sb:1,who:null},
-    {n:'Victor Dardengo (Vitão)', sa:2,sb:1,who:null},
-  ],
+  // M101 e M102 (Semifinais) removidos — palpites resetados, participantes devem reinserir
 };
 window.addEventListener('load',function(){
   if(!_db)return;
+  // Reset único dos palpites das semis (flag garante que só roda uma vez)
+  _db.ref('sf_reset_v1').once('value',function(snap){
+    if(!snap.val()){
+      _db.ref('ko_guesses/M101').remove();
+      _db.ref('ko_guesses/M102').remove();
+      _db.ref('sf_reset_v1').set(true);
+    }
+  });
   KNOWN_RESULTS.forEach(function(r){
     _db.ref('results/'+r.key).once('value',function(snap){
       var cur=snap.val();
