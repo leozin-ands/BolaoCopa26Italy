@@ -1367,7 +1367,20 @@ function BolaoApp(){
   var s_kob=useState(''); var koGuessB=s_kob[0],setKoGuessB=s_kob[1];
   var s_kow=useState(''); var koGuessWho=s_kow[0],setKoGuessWho=s_kow[1]; // 'A' ou 'B' se empate
   var s_koc=useState(false); var koConfirming=s_koc[0],setKoConfirming=s_koc[1];
-  var s_kog=useState({}); var koGuesses=s_kog[0],setKoGuesses=s_kog[1]; // palpites salvos {matchId: {participantName: {sa,sb,who}}}
+  var s_kog=useState({}); var koGuesses=s_kog[0],setKoGuesses=s_kog[1]; // palpites do Firebase
+
+  // Palpites hardcoded como fallback imediato (Firebase pode demorar ou estar vazio)
+  // koGuesses (Firebase) sobrepõe esses valores quando disponível
+  var koGuessesDefault=useMemo(function(){
+    var d={};
+    Object.keys(KNOWN_KO_GUESSES).forEach(function(mid){
+      d[mid]={};
+      KNOWN_KO_GUESSES[mid].forEach(function(g){
+        d[mid][g.n]={sa:g.sa,sb:g.sb,who:g.who};
+      });
+    });
+    return d;
+  },[]);
   var s_kopw=useState(''); var koPassInput=s_kopw[0],setKoPassInput=s_kopw[1]; // senha digitada
   var s_koae=useState(false); var koAuthed=s_koae[0],setKoAuthed=s_koae[1]; // senha validada com sucesso
   var s_koer=useState(''); var koPassErr=s_koer[0],setKoPassErr=s_koer[1]; // mensagem de erro da senha
@@ -1637,7 +1650,9 @@ function BolaoApp(){
       // consiga inferir o vencedor pelo placar quando winnerName vier nulo do Firebase
       var enriched=Object.assign({taName:m.taName,tbName:m.tbName},real);
       RAW.forEach(function(p){
-        var g=(koGuesses[m.id]||{})[p.name];
+        // Merge: Firebase sobrepõe hardcoded
+        var matchGuesses=Object.assign({},koGuessesDefault[m.id]||{},koGuesses[m.id]||{});
+        var g=matchGuesses[p.name];
         if(g)t[p.name]+=calcPtsKnockout(enriched,g,m.id);
       });
     }
@@ -1656,7 +1671,7 @@ function BolaoApp(){
     });
 
     return t;
-  },[koResults,koGuesses,koResultsFromDB,nowTick]);
+  },[koResults,koGuesses,koGuessesDefault,koResultsFromDB,nowTick]);
 
   var ranked=useMemo(function(){
     return Object.entries(scores).sort(function(a,b){
@@ -1778,7 +1793,8 @@ function BolaoApp(){
   // mostrado na aba "Palpites do Dia" assim que o prazo daquele jogo se esgota.
   function KnockoutGuessCard(m){
     // m: {id, taName, tbName, date, time} — um confronto da Rodada de 32/Oitavas/etc.
-    var myGuesses=koGuesses[m.id]||{};
+    // Merge: Firebase sobrepõe hardcoded; hardcoded é fallback imediato
+    var myGuesses=Object.assign({},koGuessesDefault[m.id]||{},koGuesses[m.id]||{});
     var realKO=koResults[m.id]||null;
     var hasReal=realKO&&realKO.sa!==null&&realKO.sa!==undefined;
     // Garante taName/tbName no objeto real para cálculo correto do bônus de classificado
