@@ -2359,37 +2359,45 @@ function BolaoApp(){
         hasReal?h('span',{style:{background:'#22c55e22',border:'1px solid #22c55e',borderRadius:8,padding:'2px 10px',fontSize:13,fontWeight:800,color:'#22c55e'}},realKO.sa+' × '+realKO.sb)
         :h('span',{style:{fontSize:11,color:'#94a3b8'}},'sem resultado')
       ),
-      isStillOpen
-        ?h('div',{style:{padding:'14px',textAlign:'center',color:'#facc15',fontSize:12,fontWeight:600,display:'flex',alignItems:'center',justifyContent:'center',gap:6}},
-            '🔒 Os palpites ficarão visíveis quando o prazo de envio encerrar (30min antes do jogo)')
-        :h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(148px,1fr))',gap:1,background:'#243356'}},
-            RAW.map(function(p){
-              var g=myGuesses[p.name];
-              var pts=(g&&hasReal)?calcPtsKnockout(realForCalc,g,m.id):null;
-              var bg=pts!==null?PTS_BG[pts]:'#1a2d52';
-              var bc=pts!==null?PTS_COL[pts]:'#1a2d52';
-              var tc=pts!==null?PTS_COL[pts]:'#94a3b8';
-              if(!g){
-                var noBg=hasReal?PTS_BG[0]:'#1a2d52';
-                var noBc=hasReal?PTS_COL[0]:'#1a2d52';
-                return h('div',{key:p.name,style:{background:noBg,padding:'8px 11px',borderLeft:'3px solid '+noBc}},
-                  h('div',{style:{fontSize:10,color:'#94a3b8',marginBottom:2,fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},p.name),
-                  h('div',{style:{display:'flex',alignItems:'center',gap:4}},
-                    h('span',{style:{fontSize:13,color:hasReal?PTS_COL[0]:'#4b5563',fontWeight:hasReal?700:400}},'— não palpitou —'),
-                    hasReal?h('span',{style:{marginLeft:'auto',fontSize:10,fontWeight:800,color:PTS_COL[0],border:'1px solid '+PTS_COL[0],borderRadius:5,padding:'1px 4px'}},'0pts'):null
-                  )
-                );
-              }
-              return h('div',{key:p.name,style:{background:bg,padding:'8px 11px',borderLeft:'3px solid '+bc}},
-                h('div',{style:{fontSize:10,color:'#94a3b8',marginBottom:2,fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},p.name),
-                h('div',{style:{display:'flex',alignItems:'center',gap:4}},
-                  h('span',{style:{fontSize:16,fontWeight:800,color:'#facc15'}},g.sa,' ',h('span',{style:{color:'#64748b',fontSize:12}},'×'),' ',g.sb),
-                  (g.sa===g.sb&&g.who)?h('span',{style:{fontSize:9,color:'#94a3b8',marginLeft:4}},'('+(g.who==='A'?m.taName:m.tbName).slice(0,10)+')'):null,
-                  pts!==null?h('span',{style:{marginLeft:'auto',fontSize:10,fontWeight:800,color:tc,border:'1px solid '+bc,borderRadius:5,padding:'1px 4px'}},pts+'pts'):null
-                )
-              );
-            })
-          )
+      h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(148px,1fr))',gap:1,background:'#243356'}},
+        RAW.map(function(p){
+          var g=myGuesses[p.name];
+          // Antes de 30min: mostra apenas "já palpitou" / "não palpitou" (sem placar)
+          if(isStillOpen){
+            var bg=g?'#0a1f0a':'#1a2d52';
+            var bc=g?'#22c55e':'#243356';
+            return h('div',{key:p.name,style:{background:bg,padding:'8px 11px',borderLeft:'3px solid '+bc}},
+              h('div',{style:{fontSize:10,color:'#94a3b8',marginBottom:2,fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},p.name),
+              h('div',{style:{fontSize:11,color:g?'#4ade80':'#4b5563',fontWeight:g?600:400}},
+                g?'✅ já palpitou':'○ não palpitou')
+            );
+          }
+          // A partir de 30min antes: mostra placares e pontuações
+          var pts=(g&&hasReal)?calcPtsKnockout(realForCalc,g,m.id):null;
+          var bg2=pts!==null?PTS_BG[pts]:'#1a2d52';
+          var bc2=pts!==null?PTS_COL[pts]:'#1a2d52';
+          var tc=pts!==null?PTS_COL[pts]:'#94a3b8';
+          if(!g){
+            var noBg=hasReal?PTS_BG[0]:'#1a2d52';
+            var noBc=hasReal?PTS_COL[0]:'#1a2d52';
+            return h('div',{key:p.name,style:{background:noBg,padding:'8px 11px',borderLeft:'3px solid '+noBc}},
+              h('div',{style:{fontSize:10,color:'#94a3b8',marginBottom:2,fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},p.name),
+              h('div',{style:{display:'flex',alignItems:'center',gap:4}},
+                h('span',{style:{fontSize:13,color:hasReal?PTS_COL[0]:'#4b5563',fontWeight:hasReal?700:400}},'— não palpitou —'),
+                hasReal?h('span',{style:{marginLeft:'auto',fontSize:10,fontWeight:800,color:PTS_COL[0],border:'1px solid '+PTS_COL[0],borderRadius:5,padding:'1px 4px'}},'0pts'):null
+              )
+            );
+          }
+          return h('div',{key:p.name,style:{background:bg2,padding:'8px 11px',borderLeft:'3px solid '+bc2}},
+            h('div',{style:{fontSize:10,color:'#94a3b8',marginBottom:2,fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},p.name),
+            h('div',{style:{display:'flex',alignItems:'center',gap:4}},
+              h('span',{style:{fontSize:16,fontWeight:800,color:'#facc15'}},g.sa,' ',h('span',{style:{color:'#64748b',fontSize:12}},'×'),' ',g.sb),
+              (g.sa===g.sb&&g.who)?h('span',{style:{fontSize:9,color:'#94a3b8',marginLeft:4}},'('+(g.who==='A'?m.taName:m.tbName).slice(0,10)+')'):null,
+              pts!==null?h('span',{style:{marginLeft:'auto',fontSize:10,fontWeight:800,color:tc,border:'1px solid '+bc2,borderRadius:5,padding:'1px 4px'}},pts+'pts'):null
+            )
+          );
+        })
+      )
     );
   }
 
