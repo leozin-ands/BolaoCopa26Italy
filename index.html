@@ -733,7 +733,11 @@ var KNOWN_KO_GUESSES={
     {n:'Tayadão', sa:3,sb:1,who:'B'},
     {n:'Victor Dardengo (Vitão)', sa:2,sb:0,who:null},
   ],
-  // M101 e M102 (Semifinais) removidos — palpites resetados, participantes devem reinserir
+  // M101: Semifinal França × Espanha — palpites conhecidos
+  'M101':[
+    {n:'Gabriel Lozano', sa:1,sb:0,who:null}, // França 1×0 Espanha
+  ],
+  // M102 e outros SFs — sem dados hardcoded
 };
 window.addEventListener('load',function(){
   if(!_db)return;
@@ -755,17 +759,14 @@ window.addEventListener('load',function(){
     });
   });
   // REMOVIDO: limpeza de ko_guesses (era one-time migration, não deve mais rodar)
-  // Restaura palpites do mata-mata conhecidos se o Firebase estiver vazio
-  _db.ref('ko_guesses').once('value',function(snap){
-    var existing=snap.val()||{};
-    Object.keys(KNOWN_KO_GUESSES).forEach(function(matchId){
-      if(existing[matchId])return; // já existem palpites para esse jogo — não sobrescreve
-      var guesses={};
-      KNOWN_KO_GUESSES[matchId].forEach(function(g){
-        var key=g.n.replace(/[\.#\$\[\]\/]/g,'_');
-        guesses[key]={sa:g.sa,sb:g.sb,who:g.who};
+  // Restaura palpites conhecidos — seed por participante (não sobrescreve palpites existentes)
+  Object.keys(KNOWN_KO_GUESSES).forEach(function(matchId){
+    KNOWN_KO_GUESSES[matchId].forEach(function(g){
+      var key=g.n.replace(/[\.#\$\[\]\/]/g,'_');
+      _db.ref('ko_guesses/'+matchId+'/'+key).once('value',function(snap){
+        if(!snap.val()) // só insere se o participante ainda não tem palpite para esse jogo
+          _db.ref('ko_guesses/'+matchId+'/'+key).set({sa:g.sa,sb:g.sb,who:g.who});
       });
-      _db.ref('ko_guesses/'+matchId).set(guesses);
     });
   });
   // Seed dos resultados confirmados do mata-mata (fallback se a ESPN não foi
