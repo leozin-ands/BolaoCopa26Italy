@@ -2835,8 +2835,11 @@ function BolaoApp(){
           onChange:function(e){
             var name=e.target.value;
             setKoSelectedName(name);
-            // Pré-carrega o palpite já existente, se houver, para edição
-            var existing=(koGuesses[koPickMatch.id]||{})[name];
+            setKoSaveStatus('idle');
+            // Pré-carrega palpite existente (Firebase primeiro, depois hardcoded)
+            var fbGuess=(koGuesses[koPickMatch.id]||{})[name];
+            var defGuess=(koGuessesDefault[koPickMatch.id]||{})[name];
+            var existing=fbGuess||defGuess;
             if(existing){
               setKoGuessA(String(existing.sa));
               setKoGuessB(String(existing.sb));
@@ -2849,13 +2852,13 @@ function BolaoApp(){
         },
           h('option',{value:''},'— Selecione seu nome —'),
           RAW.map(function(p){
-            var already=koGuesses[koPickMatch.id]||{};
+            var already=Object.assign({},koGuessesDefault[koPickMatch.id]||{},koGuesses[koPickMatch.id]||{});
             var has=!!already[p.name];
             return h('option',{key:p.name,value:p.name},p.name+(has?' ✓ (já palpitou)':''));
           })
         ),
         (function(){
-          var already=koGuesses[koPickMatch.id]||{};
+          var already=Object.assign({},koGuessesDefault[koPickMatch.id]||{},koGuesses[koPickMatch.id]||{});
           var pendingCount=RAW.length-Object.keys(already).length;
           return h('div',{style:{fontSize:11,color:'#64748b',marginTop:8}},pendingCount+' de '+RAW.length+' ainda não palpitaram · pode editar até 30min antes do jogo');
         })()
@@ -2944,8 +2947,19 @@ function BolaoApp(){
             h('button',{
               onClick:function(){
                 setKoSaveStatus('saving');
-                saveKoGuess(koPickMatch.id,koSelectedName,parseInt(koGuessA),parseInt(koGuessB),koGuessWho||null);
-                setTimeout(function(){setKoSaveStatus('saved');},400);
+                var mid=koPickMatch.id;
+                var pname=koSelectedName;
+                var sa=parseInt(koGuessA);
+                var sb=parseInt(koGuessB);
+                var who=koGuessWho||null;
+                // Salva no Firebase com callback de confirmação
+                var key=pname.replace(/[\.#\$\[\]\/]/g,'_');
+                if(_db){
+                  _db.ref('ko_guesses/'+mid+'/'+key).set({sa:sa,sb:sb,who:who},function(err){
+                    if(!err) setKoSaveStatus('saved');
+                    else{ alert('Erro ao salvar. Tente novamente.'); setKoSaveStatus('ready'); }
+                  });
+                }
               },
               style:{flex:1,padding:'9px',background:'#22c55e',border:'none',borderRadius:8,color:'#052e16',fontWeight:800,cursor:'pointer',fontSize:13,fontFamily:'inherit'}
             },'✅ Confirmar')
