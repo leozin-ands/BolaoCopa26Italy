@@ -2904,7 +2904,8 @@ function BolaoApp(){
             return h('div',{key:p.name,style:{display:'flex',alignItems:'center',gap:8,padding:'5px 8px',borderRadius:6,background:g?'#0a2010':'#1a2d52'}},
               h('span',{style:{fontSize:12}},g?'✅':'○'),
               h('span',{style:{fontSize:11,flex:1,color:g?'#86efac':'#64748b'}},p.name),
-              g?h('span',{style:{fontSize:11,color:'#facc15',fontWeight:700}},g.sa+' × '+g.sb+(g.sa===g.sb&&g.who?' ('+(g.who==='A'?(koPickMatch.ta&&koPickMatch.ta.team):(koPickMatch.tb&&koPickMatch.tb.team))+'  pens)':'')):
+              // Scores ficam ocultos até 30min antes do jogo
+              g?h('span',{style:{fontSize:10,color:'#4a6090',fontStyle:'italic'}},'palpite enviado'):
                 h('span',{style:{fontSize:10,color:'#374151'}},'não palpitou')
             );
           })
