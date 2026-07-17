@@ -109,6 +109,8 @@ var KNOWN_KO_RESULTS=[
   // ── Semifinal ─────────────────────────────────────────────────────────────
   // França 0 x 2 Espanha (M101) — vitória direta nos 90 minutos
   {id:'M101', sa:0, sb:2, who:null, decidedBy:'regulation', winnerName:'Espanha'},
+  // Inglaterra 1 x 2 Argentina (M102) — vitória direta nos 90 minutos
+  {id:'M102', sa:1, sb:2, who:null, decidedBy:'regulation', winnerName:'Argentina'},
 ];
 
 // Palpites do mata-mata recuperados das capturas de tela da conversa
@@ -960,7 +962,8 @@ function getMatchRound(matchId){
   if(n>=89&&n<=96)return 'R16';
   if(n>=97&&n<=100)return 'QF';
   if(n>=101&&n<=102)return 'SF';
-  if(n===103)return 'F';
+  if(n===103)return 'F';   // Final
+  if(n===104)return 'SF';  // 3º lugar — mesma pontuação da semi
   return 'R32';
 }
 
@@ -2009,8 +2012,8 @@ function BolaoApp(){
     {id:'M100',a:'M95',b:'M96',taName:'Argentina', tbName:'Suíça',     date:'11/07',time:'22h'}
   ];
   var SF_PAIRS=[
-    {id:'M101',a:'M97',b:'M98',date:'14/07',time:'16h'},
-    {id:'M102',a:'M99',b:'M100',date:'15/07',time:'16h'}
+    {id:'M101',a:'M97',b:'M98',taName:'França',    tbName:'Espanha',    date:'14/07',time:'16h'},
+    {id:'M102',a:'M99',b:'M100',taName:'Inglaterra',tbName:'Argentina', date:'15/07',time:'16h'}
   ];
 
   // ── Resultados reais do mata-mata, vindos da ESPN (ao vivo + encerrados) ────
@@ -2073,6 +2076,9 @@ function BolaoApp(){
         if(ta&&tb)applyMatch({id:m.id,taName:ta,tbName:tb,date:m.date,time:m.time});
       });
     });
+    // Final e 3º lugar
+    [{id:'M103',taName:'Espanha',    tbName:'Argentina', date:'19/07',time:'16h'},
+     {id:'M104',taName:'Inglaterra', tbName:'França',    date:'18/07',time:'18h'}].forEach(applyMatch);
 
     return map;
   },[espnEvents,koResultsFromDB]);
@@ -2097,12 +2103,14 @@ function BolaoApp(){
     });
     [R16_PAIRS,QF_PAIRS,SF_PAIRS].forEach(function(arr){
       arr.forEach(function(m){
-        // Usa nome hardcoded se disponível; senão resolve pelo vencedor do confronto anterior
         var ta=m.taName||koWinnerName(m.a)||('Venc. '+m.a);
         var tb=m.tbName||koWinnerName(m.b)||('Venc. '+m.b);
         list.push({id:m.id,taName:ta,tbName:tb,date:m.date,time:m.time});
       });
     });
+    // Final e 3º lugar
+    list.push({id:'M103',taName:'Espanha',    tbName:'Argentina', date:'19/07',time:'16h'});
+    list.push({id:'M104',taName:'Inglaterra', tbName:'França',    date:'18/07',time:'18h'});
     return list;
   },[koResults]);
 
@@ -2218,6 +2226,9 @@ function BolaoApp(){
       var ta=m.taName||koWinnerName(m.a),tb=m.tbName||koWinnerName(m.b);
       if(ta&&tb)processMatch({id:m.id,taName:ta,tbName:tb,date:m.date,time:m.time});
     });
+    // Final e 3º lugar
+    [{id:'M103',taName:'Espanha',tbName:'Argentina',date:'19/07',time:'16h'},
+     {id:'M104',taName:'Inglaterra',tbName:'França',  date:'18/07',time:'18h'}].forEach(processMatch);
 
     return t;
   },[koResults,koGuesses,koGuessesDefault,koResultsFromDB,nowTick]);
@@ -2572,6 +2583,7 @@ function BolaoApp(){
             {label:'🏆 Oitavas de Final',  ids:R16_PAIRS.map(function(m){return m.id;})},
             {label:'🏆 Quartas de Final',  ids:QF_PAIRS.map(function(m){return m.id;})},
             {label:'🏆 Semifinal',         ids:SF_PAIRS.map(function(m){return m.id;})},
+            {label:'🥉 3º Lugar',           ids:['M104']},
             {label:'🏆 Final',             ids:['M103']},
           ];
           var filtered=allKoMatches.filter(function(m){
@@ -2789,9 +2801,9 @@ function BolaoApp(){
 
       var centerCards=h('div',{style:{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:24,minWidth:190,padding:'0 8px'}},
         h('div',{style:{fontSize:13,fontWeight:800,color:'#facc15',textAlign:'center',letterSpacing:2,textTransform:'uppercase'}},'🏆 Final'),
-        MatchCard('Final',null,null,'Venc. M101','Venc. M102','19/07','16h'),
+        MatchCard('M103',{team:'Espanha'},{team:'Argentina'},null,null,'19/07','16h'),
         h('div',{style:{fontSize:10,fontWeight:700,color:'#94a3b8',textAlign:'center',letterSpacing:1,marginTop:8}},'3º Lugar'),
-        MatchCard('3º Lugar',null,null,'Perdedor M101','Perdedor M102','18/07','18h')
+        MatchCard('M104',{team:'Inglaterra'},{team:'França'},null,null,'18/07','18h')
       );
 
       return h('div',{
