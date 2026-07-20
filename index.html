@@ -107,10 +107,14 @@ var KNOWN_KO_RESULTS=[
   // ── Quartas de Final ──────────────────────────────────────────────────────
   {id:'M97', sa:2, sb:0, who:null, decidedBy:'regulation', winnerName:'França'},
   // ── Semifinal ─────────────────────────────────────────────────────────────
-  // França 0 x 2 Espanha (M101) — vitória direta nos 90 minutos
   {id:'M101', sa:0, sb:2, who:null, decidedBy:'regulation', winnerName:'Espanha'},
-  // Inglaterra 1 x 2 Argentina (M102) — vitória direta nos 90 minutos
   {id:'M102', sa:1, sb:2, who:null, decidedBy:'regulation', winnerName:'Argentina'},
+  // ── 3º Lugar ──────────────────────────────────────────────────────────────
+  // Inglaterra 6 x 4 França (M104) — vitória direta nos 90 minutos
+  {id:'M104', sa:6, sb:4, who:null, decidedBy:'regulation', winnerName:'Inglaterra'},
+  // ── Final ─────────────────────────────────────────────────────────────────
+  // Espanha 1 x 0 Argentina (M103) — vitória direta nos 90 minutos
+  {id:'M103', sa:1, sb:0, who:null, decidedBy:'regulation', winnerName:'Espanha'},
 ];
 
 // Palpites do mata-mata recuperados das capturas de tela da conversa
@@ -740,9 +744,50 @@ var KNOWN_KO_GUESSES={
   ],
   // M101: Semifinal França × Espanha — palpites conhecidos
   'M101':[
-    {n:'Gabriel Lozano', sa:1,sb:0,who:null}, // França 1×0 Espanha
+    {n:'Gabriel Lozano', sa:1,sb:0,who:null},
   ],
-  // M102 e outros SFs — sem dados hardcoded
+  // M104: 3º Lugar — Inglaterra(A) × França(B) — resultado: 6×4 Inglaterra
+  'M104':[
+    {n:'Victor Dardengo (Vitão)', sa:0,sb:2,who:null},
+    {n:'Léo Lucki',               sa:1,sb:3,who:null},
+    {n:'Ands',                    sa:2,sb:3,who:null},
+    {n:'Adriano (Leão)',          sa:0,sb:2,who:null},
+    {n:'Rodrigo',                 sa:0,sb:2,who:null},
+    {n:'Alvim',                   sa:1,sb:3,who:null},
+    {n:'Hallifer',                sa:1,sb:2,who:null},
+    {n:'Rick',                    sa:2,sb:4,who:null},
+    {n:'Kaynan',                  sa:0,sb:2,who:null},
+    {n:'Cezinha',                 sa:1,sb:2,who:null},
+    {n:'Gabriel Lozano',          sa:1,sb:0,who:null},
+    {n:'Pedro Canaves',           sa:1,sb:2,who:null},
+    {n:'Luiz Balestero',          sa:1,sb:3,who:null},
+    {n:'João Macieski',           sa:0,sb:2,who:null},
+    {n:'Carlinhos',               sa:1,sb:3,who:null},
+    {n:'Cavalo',                  sa:0,sb:2,who:null},
+    {n:'Léo Kawa',                sa:2,sb:2,who:'A'},
+    {n:'Tayadão',                 sa:1,sb:3,who:null},
+  ],
+  // M103: Final — Espanha(A) × Argentina(B) — resultado: 1×0 Espanha
+  'M103':[
+    {n:'Victor Dardengo (Vitão)', sa:1,sb:1,who:'A'},
+    {n:'Léo Lucki',               sa:3,sb:2,who:null},
+    {n:'Ands',                    sa:2,sb:1,who:null},
+    {n:'Adriano (Leão)',          sa:3,sb:1,who:null},
+    {n:'Alvim',                   sa:1,sb:2,who:null},
+    {n:'Hallifer',                sa:1,sb:2,who:null},
+    {n:'Rick',                    sa:3,sb:2,who:null},
+    {n:'Kaynan',                  sa:2,sb:1,who:null},
+    {n:'Cezinha',                 sa:3,sb:2,who:null},
+    {n:'Gabriel Lozano',          sa:0,sb:2,who:null},
+    {n:'Pedro Canaves',           sa:2,sb:1,who:null},
+    {n:'Luiz Balestero',          sa:1,sb:1,who:'B'},
+    {n:'João Macieski',           sa:2,sb:1,who:null},
+    {n:'Carlinhos',               sa:2,sb:0,who:null},
+    {n:'Cavalo',                  sa:3,sb:1,who:null},
+    {n:'Léo Kawa',                sa:2,sb:1,who:null},
+    {n:'Tayadão',                 sa:3,sb:1,who:null},
+  ],
+  // M102 e outros — sem dados hardcoded
 };
 window.addEventListener('load',function(){
   if(!_db)return;
