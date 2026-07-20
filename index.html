@@ -82,6 +82,40 @@ var KNOWN_RESULTS=[
 // Resultados CONFIRMADOS do mata-mata (fallback caso a ESPN não tenha sido
 // capturada a tempo no navegador de nenhum participante). Mesmo padrão do
 // KNOWN_RESULTS acima, mas gravados em ko_results/ em vez de results/.
+// ── Bônus: Artilheiro (15pts) e Melhor Jogador (10pts) ──────────────────────
+// Artilheiro real: Kylian Mbappé | Melhor Jogador real: Rodri
+// Nenhum participante acertou o Melhor Jogador (Rodri)
+var BONUS_SCORES={
+  'Victor Dardengo (Vitão)': {artilheiro:'Mbappé',       acertouArt:true,  melhor:'Michael Olise',   acertouMelhor:false},
+  'Léo Lucki':               {artilheiro:'Mbappé',       acertouArt:true,  melhor:'Yamal',            acertouMelhor:false},
+  'Ands':                    {artilheiro:'Harry Kane',    acertouArt:false, melhor:'Lamine Yamal',     acertouMelhor:false},
+  'Adriano (Leão)':          {artilheiro:'Lamine Yamal', acertouArt:false, melhor:'Vinícius Jr',      acertouMelhor:false},
+  'Rodrigo':                 {artilheiro:'Vinícius Jr',  acertouArt:false, melhor:'Vinícius Jr',      acertouMelhor:false},
+  'Alvim':                   {artilheiro:'Oyarzabal',    acertouArt:false, melhor:'Lamine Yamal',     acertouMelhor:false},
+  'Hallifer':                {artilheiro:'Harry Kane',   acertouArt:false, melhor:'Kylian Mbappé',    acertouMelhor:false},
+  'Biscoito':                {artilheiro:'Mbappé',       acertouArt:true,  melhor:'Michael Olise',    acertouMelhor:false},
+  'Rick':                    {artilheiro:'Mbappé',       acertouArt:true,  melhor:'Lamine Yamal',     acertouMelhor:false},
+  'Kaynan':                  {artilheiro:'Mbappé',       acertouArt:true,  melhor:'Messi',            acertouMelhor:false},
+  'Cezinha':                 {artilheiro:'Mbappé',       acertouArt:true,  melhor:'Mbappé',           acertouMelhor:false},
+  'Gabriel Lozano':          {artilheiro:'Mbappé',       acertouArt:true,  melhor:'Mbappé',           acertouMelhor:false},
+  'Bento':                   {artilheiro:'C. Ronaldo',   acertouArt:false, melhor:'Michael Olise',    acertouMelhor:false},
+  'Luiz Tabith':             {artilheiro:'Endrick',      acertouArt:false, melhor:'Messi',            acertouMelhor:false},
+  'Pedro Canaves':           {artilheiro:'Mbappé',       acertouArt:true,  melhor:'Yamal',            acertouMelhor:false},
+  'Luiz Balestero':          {artilheiro:'Kai Havertz',  acertouArt:false, melhor:'Florian Wirtz',    acertouMelhor:false},
+  'João Macieski':           {artilheiro:'Mbappé',       acertouArt:true,  melhor:'Mbappé',           acertouMelhor:false},
+  'Gustavo Martins':         {artilheiro:'C. Ronaldo',   acertouArt:false, melhor:'C. Ronaldo',       acertouMelhor:false},
+  'Carlinhos':               {artilheiro:'Oyarzabal',    acertouArt:false, melhor:'Lamine Yamal',     acertouMelhor:false},
+  'Cavalo':                  {artilheiro:'Kylian Mbappé',acertouArt:true,  melhor:'Michael Olise',    acertouMelhor:false},
+  'Malta':                   {artilheiro:'Kylian Mbappé',acertouArt:true,  melhor:'Lamine Yamal',     acertouMelhor:false},
+  'Léo Kawa':                {artilheiro:'—',            acertouArt:false, melhor:'—',                acertouMelhor:false},
+  'Tayadão':                 {artilheiro:'—',            acertouArt:false, melhor:'—',                acertouMelhor:false},
+};
+function getBonusPts(name){
+  var b=BONUS_SCORES[name];
+  if(!b)return 0;
+  return (b.acertouArt?15:0)+(b.acertouMelhor?10:0);
+}
+
 var KNOWN_KO_RESULTS=[
   // África do Sul 0 x 1 Canadá (M75) — gol nos acréscimos do 2º tempo, sem prorrogação/pênaltis
   {id:'M75', sa:0, sb:1, who:null, decidedBy:'regulation', winnerName:'Canadá'},
@@ -2280,19 +2314,20 @@ function BolaoApp(){
 
   var ranked=useMemo(function(){
     return Object.entries(scores).sort(function(a,b){
-      var totalA=a[1].total+(koPoints[a[0]]||0);
-      var totalB=b[1].total+(koPoints[b[0]]||0);
+      var totalA=a[1].total+(koPoints[a[0]]||0)+getBonusPts(a[0]);
+      var totalB=b[1].total+(koPoints[b[0]]||0)+getBonusPts(b[0]);
       return totalB-totalA;
     }).map(function(x,i){
       var koP=koPoints[x[0]]||0;
-      return{rank:i+1,name:x[0],total:x[1].total+koP,match:x[1].match,group:x[1].group,knockout:koP,c5:x[1].c5,c4:x[1].c4,c2:x[1].c2,c0:x[1].c0};
+      var bonusP=getBonusPts(x[0]);
+      return{rank:i+1,name:x[0],total:x[1].total+koP+bonusP,match:x[1].match,group:x[1].group,knockout:koP,bonus:bonusP,c5:x[1].c5,c4:x[1].c4,c2:x[1].c2,c0:x[1].c0};
     });
   },[scores,koPoints]);
 
   var rankingTab=h('div',null,
     h('div',{style:{marginBottom:12,color:'#94a3b8',fontSize:13}},'Ranking atualizado em tempo real'),
     h('div',{style:{background:'#1a2d52',borderRadius:10,overflow:'hidden',border:'1px solid #243356',overflowX:'auto'}},
-      h('table',{style:{width:'100%',borderCollapse:'collapse',fontSize:13,minWidth:620}},
+      h('table',{style:{width:'100%',borderCollapse:'collapse',fontSize:13,minWidth:660}},
         h('thead',null,
           h('tr',{style:{background:'#16243e'}},
             h('th',{style:{padding:'9px 6px',textAlign:'center',color:'#64748b',fontWeight:700,fontSize:11,width:34}},'#'),
@@ -2303,18 +2338,20 @@ function BolaoApp(){
             h('th',{style:{padding:'9px 6px',textAlign:'center',color:'#f59e0b',fontWeight:700,fontSize:11,width:46}},'2pts'),
             h('th',{style:{padding:'9px 6px',textAlign:'center',color:'#ef4444',fontWeight:700,fontSize:11,width:46}},'0pts'),
             h('th',{style:{padding:'9px 6px',textAlign:'center',color:'#a78bfa',fontWeight:700,fontSize:11,width:54}},'Grupo'),
-            h('th',{style:{padding:'9px 6px',textAlign:'center',color:'#facc15',fontWeight:700,fontSize:11,width:60}},'Mata-Mata')
+            h('th',{style:{padding:'9px 6px',textAlign:'center',color:'#facc15',fontWeight:700,fontSize:11,width:60}},'Mata-Mata'),
+            h('th',{style:{padding:'9px 6px',textAlign:'center',color:'#fbbf24',fontWeight:700,fontSize:11,width:54}},'🏅 Bônus')
           )
         ),
         h('tbody',null,
           ranked.map(function(r,i){
             var medals=['🥇','🥈','🥉'],isTop=i<3;
-            // Ouro / Prata / Bronze
             var rowBg = i===0?'linear-gradient(90deg,#3d3209,#2a2407)':
                         i===1?'linear-gradient(90deg,#2a2d33,#23262b)':
                         i===2?'linear-gradient(90deg,#3a2615,#2d1d10)':
                         (i%2===0?'#1a2d52':'#192a4d');
             var rowBorder = i===0?'#facc15':i===1?'#cbd5e1':i===2?'#cd7f32':'#243356';
+            var bs=BONUS_SCORES[r.name];
+            var bonusTitle=bs?('🏀 Artilheiro: '+(bs.acertouArt?'✅ ':'❌ ')+bs.artilheiro+'\n⭐ Melhor: '+(bs.acertouMelhor?'✅ ':'❌ ')+bs.melhor):'';
             return h('tr',{key:r.name,style:{
               background:rowBg,
               borderTop:'1px solid '+rowBorder,
@@ -2334,7 +2371,9 @@ function BolaoApp(){
               h('td',{style:{padding:'8px 6px',textAlign:'center',fontWeight:600,fontSize:12,color:'#f59e0b'}},r.c2),
               h('td',{style:{padding:'8px 6px',textAlign:'center',fontWeight:600,fontSize:12,color:'#ef4444'}},r.c0),
               h('td',{style:{padding:'8px 6px',textAlign:'center',fontWeight:700,fontSize:12,color:'#a78bfa'}},r.group),
-              h('td',{style:{padding:'8px 6px',textAlign:'center',fontWeight:700,fontSize:12,color:'#facc15'}},r.knockout)
+              h('td',{style:{padding:'8px 6px',textAlign:'center',fontWeight:700,fontSize:12,color:'#facc15'}},r.knockout),
+              h('td',{title:bonusTitle,style:{padding:'8px 6px',textAlign:'center',fontWeight:700,fontSize:12,color:r.bonus>0?'#fbbf24':'#374151',cursor:bonusTitle?'help':'default'}},
+                r.bonus>0?'+'+r.bonus:'—')
             );
           })
         )
